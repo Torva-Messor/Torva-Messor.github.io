@@ -2,36 +2,34 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Live Präsentation - Viewer</title>
+    <title>Live Viewer</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
+    <style>
+        #status-indicator {
+            position: fixed; top: 10px; right: 10px; z-index: 99;
+            padding: 5px 15px; border-radius: 20px; font-family: sans-serif;
+            font-size: 14px; background: rgba(255,255,255,0.1);
+        }
+        /* Das Bild ist am Anfang versteckt */
+        #lehrer-bild {
+            display: none; width: 300px; margin-top: 20px; border-radius: 10px;
+        }
+    </style>
 </head>
 <body>
 
+    <div id="status-indicator">Status: <span id="status-text" style="color: red;">Offline</span></div>
+
     <div class="reveal">
         <div class="slides">
+            <section>
+                <h1>Live Präsentation</h1>
+                <p id="waiting-msg">Bitte warten, bis der Lehrer die Sitzung startet...</p>
+                <img id="lehrer-bild" src="IMG-20260205-WA0000.jpg" alt="Vortragsbild">
+            </section>
             
-            <section>
-                <h1>Willkommen zur Präsentation</h1>
-                <p>Bitte warten, bis der Lehrer die Steuerung übernimmt.</p>
-                <small>Status: <span id="status" style="color: orange;">Verbinde...</span></small>
-            </section>
-
-            <section>
-                <h2>Wie es funktioniert</h2>
-                <p>Diese Folien wechseln automatisch per PubNub API.</p>
-            </section>
-
-            <section>
-                <h2>Datenschutz</h2>
-                <p>Es werden keine persönlichen Daten von euch gespeichert.</p>
-            </section>
-
-            <section>
-                <h1>Ende</h1>
-                <p>Vielen Dank für die Aufmerksamkeit!</p>
-            </section>
-
+            <section><h2>Folie 2</h2><p>Jetzt sind wir live!</p></section>
         </div>
     </div>
 
@@ -40,46 +38,50 @@
     <script src="config.js"></script>
 
     <script>
-        // 1. Reveal.js Konfiguration
-        Reveal.initialize({
-            controls: false, // Pfeile für Schüler ausblenden
-            keyboard: false, // Tastatur für Schüler sperren
-            touch: false,    // Wischen für Schüler sperren
-            progress: true,  // Fortschrittsbalken zeigen
-            hash: true
-        });
+        Reveal.initialize({ controls: false, keyboard: false });
 
-        const statusEl = document.getElementById("status");
+        const statusText = document.getElementById("status-text");
+        const lehrerBild = document.getElementById("lehrer-bild");
+        const waitingMsg = document.getElementById("waiting-msg");
 
-        // 2. PubNub Verbindung (Nutzt Variablen aus config.js)
         const pubnub = new PubNub({
             subscribeKey: Pub_Nub_api_Subscribe,
-            userId: "anonymous_viewer", // Statisch für DSGVO
-            ssl: true
+            userId: "viewer_" + Math.floor(Math.random() * 1000) // DSGVO-konforme Zufallszahl
         });
 
-        // Kanal abonnieren
-        pubnub.subscribe({
-            channels: [My_Channel_Name]
-        });
+        pubnub.subscribe({ channels: [My_Channel_Name], withPresence: true });
 
-        // 3. Auf Signale vom Presenter hören
+        // Funktion zum Umschalten des Status-Designs
+        function setOnline(isOnline) {
+            if (isOnline) {
+                statusText.innerText = "Verbunden";
+                statusText.style.color = "#00ff00";
+                lehrerBild.style.display = "inline-block"; // Bild zeigen
+                waitingMsg.innerText = "Der Lehrer ist bereit!";
+            } else {
+                statusText.innerText = "Warten...";
+                statusText.style.color = "red";
+                lehrerBild.style.display = "none"; // Bild verstecken
+                waitingMsg.innerText = "Bitte warten, bis der Lehrer die Sitzung startet...";
+            }
+        }
+
         pubnub.addListener({
-            status: function(s) {
-                if (s.category === "PNConnectedCategory") {
-                    statusEl.innerText = "Verbunden";
-                    statusEl.style.color = "#4CAF50";
+            presence: function(p) {
+                if (p.uuid === "teacher_presenter") {
+                    setOnline(p.action === "join");
                 }
             },
-            message: function(event) {
-                const data = event.message;
-                
-                if (data.action === "next") {
-                    Reveal.next();
-                } else if (data.action === "prev") {
-                    Reveal.prev();
-                }
+            message: function(m) {
+                if (m.message.action === "next") Reveal.next();
+                if (m.message.action === "prev") Reveal.prev();
             }
+        });
+
+        // Check beim Laden: Ist der Lehrer schon da?
+        pubnub.hereNow({ channels: [My_Channel_Name] }, function(s, r) {
+            const isThere = r.channels[My_Channel_Name].occupants.some(u => u.uuid === "teacher_presenter");
+            setOnline(isThere);
         });
     </script>
 </body>
