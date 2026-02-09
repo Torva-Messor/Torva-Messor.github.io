@@ -2,34 +2,35 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Live Viewer</title>
+    <title>Live Präsentation - Viewer</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
     <style>
-        #status-indicator {
-            position: fixed; top: 10px; right: 10px; z-index: 99;
-            padding: 5px 15px; border-radius: 20px; font-family: sans-serif;
-            font-size: 14px; background: rgba(255,255,255,0.1);
+        #status-bar {
+            position: fixed; top: 10px; right: 10px; z-index: 100;
+            padding: 8px 15px; background: rgba(0,0,0,0.7);
+            border-radius: 20px; font-family: sans-serif; font-size: 13px;
+            border: 1px solid #444;
         }
-        /* Das Bild ist am Anfang versteckt */
-        #lehrer-bild {
-            display: none; width: 300px; margin-top: 20px; border-radius: 10px;
-        }
+        #lehrer-bild { display: none; width: 400px; border-radius: 15px; margin-top: 20px; }
     </style>
 </head>
 <body>
 
-    <div id="status-indicator">Status: <span id="status-text" style="color: red;">Offline</span></div>
+    <div id="status-bar">Status: <span id="status-text" style="color: gray;">Verbinde...</span></div>
 
     <div class="reveal">
         <div class="slides">
             <section>
-                <h1>Live Präsentation</h1>
-                <p id="waiting-msg">Bitte warten, bis der Lehrer die Sitzung startet...</p>
-                <img id="lehrer-bild" src="IMG-20260205-WA0000.jpg" alt="Vortragsbild">
+                <h1>Willkommen</h1>
+                <p id="msg">Warte auf den Start der Präsentation...</p>
+                <img id="lehrer-bild" src="IMG-20260205-WA0000.jpg" alt="Vortrag">
             </section>
             
-            <section><h2>Folie 2</h2><p>Jetzt sind wir live!</p></section>
+            <section>
+                <h2>Folie 2</h2>
+                <p>Die Steuerung erfolgt live.</p>
+            </section>
         </div>
     </div>
 
@@ -38,50 +39,49 @@
     <script src="config.js"></script>
 
     <script>
-        Reveal.initialize({ controls: false, keyboard: false });
+        Reveal.initialize({ controls: false, keyboard: false, touch: false });
 
         const statusText = document.getElementById("status-text");
         const lehrerBild = document.getElementById("lehrer-bild");
-        const waitingMsg = document.getElementById("waiting-msg");
+        const msg = document.getElementById("msg");
 
         const pubnub = new PubNub({
             subscribeKey: Pub_Nub_api_Subscribe,
-            userId: "viewer_" + Math.floor(Math.random() * 1000) // DSGVO-konforme Zufallszahl
+            userId: "viewer_" + Math.random().toString(36).substring(7)
         });
 
-        pubnub.subscribe({ channels: [My_Channel_Name], withPresence: true });
-
-        // Funktion zum Umschalten des Status-Designs
-        function setOnline(isOnline) {
-            if (isOnline) {
+        function updateUI(online) {
+            if (online) {
                 statusText.innerText = "Verbunden";
                 statusText.style.color = "#00ff00";
-                lehrerBild.style.display = "inline-block"; // Bild zeigen
-                waitingMsg.innerText = "Der Lehrer ist bereit!";
+                lehrerBild.style.display = "inline-block";
+                msg.innerText = "Präsentation ist aktiv!";
             } else {
-                statusText.innerText = "Warten...";
+                statusText.innerText = "Lehrer offline";
                 statusText.style.color = "red";
-                lehrerBild.style.display = "none"; // Bild verstecken
-                waitingMsg.innerText = "Bitte warten, bis der Lehrer die Sitzung startet...";
+                lehrerBild.style.display = "none";
             }
         }
 
         pubnub.addListener({
-            presence: function(p) {
-                if (p.uuid === "teacher_presenter") {
-                    setOnline(p.action === "join");
-                }
-            },
-            message: function(m) {
+            status: (s) => { if(s.category === "PNConnectedCategory") console.log("Verbunden!"); },
+            message: (m) => {
                 if (m.message.action === "next") Reveal.next();
                 if (m.message.action === "prev") Reveal.prev();
+            },
+            presence: (p) => {
+                if (p.uuid === "teacher_presenter") {
+                    updateUI(p.action === "join" || p.action === "state-change");
+                }
             }
         });
 
-        // Check beim Laden: Ist der Lehrer schon da?
-        pubnub.hereNow({ channels: [My_Channel_Name] }, function(s, r) {
-            const isThere = r.channels[My_Channel_Name].occupants.some(u => u.uuid === "teacher_presenter");
-            setOnline(isThere);
+        pubnub.subscribe({ channels: [My_Channel_Name], withPresence: true });
+
+        // Sofort-Check beim Laden
+        pubnub.hereNow({ channels: [My_Channel_Name] }, (s, r) => {
+            const online = r.channels[My_Channel_Name].occupants.some(u => u.uuid === "teacher_presenter");
+            updateUI(online);
         });
     </script>
 </body>
