@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presenter Controller</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; padding: 50px; background: #222; color: white; }
+        .status { margin-bottom: 20px; color: #0f0; }
+        .btn { padding: 20px 40px; font-size: 20px; margin: 10px; cursor: pointer; border: none; border-radius: 5px;}
+        .btn-next { background-color: #2196F3; color: white; }
+        .btn-prev { background-color: #f44336; color: white; }
+    </style>
+</head>
+<body>
+
+    <h1>Fernbedienung</h1>
+    <div id="status" class="status">Bereit zum Senden...</div>
+
+    <button class="btn btn-prev" onclick="sendCommand('prev')">Zurück</button>
+    <button class="btn btn-next" onclick="sendCommand('next')">Weiter (Enter)</button>
+
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
+    <script src="config.js"></script>
+
+    <script>
+        // PubNub initialisieren
+        const pubnub = new PubNub({
+            publishKey: PUB_NUB_INFO.publishKey,
+            subscribeKey: PUB_NUB_INFO.subscribeKey,
+            uuid: "lehrer_presenter"
+        });
+
+        const statusDiv = document.getElementById("status");
+
+        // Funktion zum Senden
+        function sendCommand(actionType) {
+            pubnub.publish({
+                channel: PUB_NUB_INFO.channel,
+                message: { action: actionType }
+            }, (status, response) => {
+                if (status.error) {
+                    statusDiv.innerText = "Fehler beim Senden!";
+                    statusDiv.style.color = "red";
+                } else {
+                    statusDiv.innerText = "Gesendet: " + actionType;
+                    statusDiv.style.color = "#0f0";
+                    // Status nach 1 Sekunde zurücksetzen
+                    setTimeout(() => statusDiv.innerText = "Bereit...", 1000);
+                }
+            });
+        }
+
+        // Tasten abfangen (Enter & Pfeiltasten)
+        document.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" || e.key === "ArrowRight" || e.key === " ") {
+                e.preventDefault(); // Verhindert Scrollen bei Leertaste
+                sendCommand("next");
+            }
+            if (e.key === "ArrowLeft") {
+                sendCommand("prev");
+            }
+        });
+    </script>
+</body>
+</html>

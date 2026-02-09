@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <title>Live Präsentation - Viewer</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
+</head>
+<body>
+
+    <div class="reveal">
+        <div class="slides">
+            
+            <section>
+                <h1>Willkommen zur Präsentation</h1>
+                <p>Bitte warten, bis der Lehrer die Steuerung übernimmt.</p>
+                <small>Status: <span id="status" style="color: orange;">Verbinde...</span></small>
+            </section>
+
+            <section>
+                <h2>Wie es funktioniert</h2>
+                <p>Diese Folien wechseln automatisch per PubNub API.</p>
+            </section>
+
+            <section>
+                <h2>Datenschutz</h2>
+                <p>Es werden keine persönlichen Daten von euch gespeichert.</p>
+            </section>
+
+            <section>
+                <h1>Ende</h1>
+                <p>Vielen Dank für die Aufmerksamkeit!</p>
+            </section>
+
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
+    <script src="config.js"></script>
+
+    <script>
+        // 1. Reveal.js Konfiguration
+        Reveal.initialize({
+            controls: false, // Pfeile für Schüler ausblenden
+            keyboard: false, // Tastatur für Schüler sperren
+            touch: false,    // Wischen für Schüler sperren
+            progress: true,  // Fortschrittsbalken zeigen
+            hash: true
+        });
+
+        const statusEl = document.getElementById("status");
+
+        // 2. PubNub Verbindung (Nutzt Variablen aus config.js)
+        const pubnub = new PubNub({
+            subscribeKey: Pub_Nub_api_Subscribe,
+            userId: "anonymous_viewer", // Statisch für DSGVO
+            ssl: true
+        });
+
+        // Kanal abonnieren
+        pubnub.subscribe({
+            channels: [My_Channel_Name]
+        });
+
+        // 3. Auf Signale vom Presenter hören
+        pubnub.addListener({
+            status: function(s) {
+                if (s.category === "PNConnectedCategory") {
+                    statusEl.innerText = "Verbunden";
+                    statusEl.style.color = "#4CAF50";
+                }
+            },
+            message: function(event) {
+                const data = event.message;
+                
+                if (data.action === "next") {
+                    Reveal.next();
+                } else if (data.action === "prev") {
+                    Reveal.prev();
+                }
+            }
+        });
+    </script>
+</body>
+</html>
