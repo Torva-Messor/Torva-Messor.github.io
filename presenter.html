@@ -3,127 +3,59 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Presenter Fernbedienung</title>
+    <title>Presenter</title>
     <style>
-        body { 
-            background: #1a1a1a; 
-            color: #ffffff; 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            justify-content: center; 
-            height: 100vh; 
-            margin: 0; 
-            overflow: hidden;
-        }
-        .status-box {
-            padding: 30px;
-            border: 2px solid #333;
-            border-radius: 15px;
-            text-align: center;
-            background: #252525;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
-        }
-        .indicator {
-            width: 15px;
-            height: 15px;
-            border-radius: 50%;
-            display: inline-block;
-            background: #ff4444;
-            margin-right: 10px;
-        }
-        .online { background: #00ff00; box-shadow: 0 0 10px #00ff00; }
-        
-        .controls { margin-top: 30px; }
-        .btn {
-            padding: 15px 30px;
-            font-size: 18px;
-            margin: 10px;
-            cursor: pointer;
-            border: none;
-            border-radius: 8px;
-            background: #444;
-            color: white;
-            transition: 0.2s;
-        }
-        .btn:active { transform: scale(0.95); background: #666; }
-        .hint { color: #666; margin-top: 20px; font-size: 0.9em; }
+        body { background: #111; color: white; font-family: sans-serif; text-align: center; display: flex; flex-direction: column; justify-content: center; height: 100vh; margin: 0; }
+        .btn { padding: 30px; margin: 10px; font-size: 24px; border-radius: 10px; border: none; cursor: pointer; }
+        .next { background: #28a745; color: white; }
+        .prev { background: #dc3545; color: white; }
+        #status { margin-bottom: 20px; font-weight: bold; }
     </style>
 </head>
 <body>
 
-    <div class="status-box">
-        <h1><div id="led" class="indicator"></div> Presenter Mode</h1>
-        <p id="last-action">Warte auf Verbindung...</p>
-        
-        <div class="controls">
-            <button class="btn" onclick="send('prev')">⬅ Zurück</button>
-            <button class="btn" onclick="send('next')">Weiter ➡</button>
-        </div>
-        
-        <div class="hint">Tasten: Enter, Leertaste oder Pfeiltasten</div>
+    <div id="status">Verbinde zu PubNub...</div>
+    
+    <div>
+        <button class="btn prev" onclick="send('prev')">ZURÜCK</button>
+        <button class="btn next" onclick="send('next')">WEITER</button>
     </div>
+
+    <p>Oder nutze Enter / Pfeiltasten</p>
 
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
     <script src="config.js"></script>
 
     <script>
-        // PubNub Initialisierung
         const pubnub = new PubNub({
             publishKey: Pub_Nub_api_Publish,
             subscribeKey: Pub_Nub_api_Subscribe,
-            userId: "teacher_presenter", // WICHTIG: Identisch mit dem Check im Viewer
-            ssl: true
+            userId: "teacher_presenter"
         });
 
-        const statusText = document.getElementById("last-action");
-        const led = document.getElementById("led");
+        const statusDiv = document.getElementById("status");
 
-        // Kanal abonnieren, damit "Presence" (Anwesenheit) gesendet wird
-        pubnub.subscribe({
-            channels: [My_Channel_Name],
-            withPresence: true
-        });
-
-        // Verbindung bestätigen
         pubnub.addListener({
-            status: function(s) {
+            status: (s) => {
                 if (s.category === "PNConnectedCategory") {
-                    led.classList.add("online");
-                    statusText.innerText = "Bereit zum Senden";
+                    statusDiv.innerText = "VERBUNDEN ●";
+                    statusDiv.style.color = "#00ff00";
                 }
             }
         });
 
-        // Sende-Funktion
-        function send(cmd) {
+        pubnub.subscribe({ channels: [My_Channel_Name], withPresence: true });
+
+        function send(action) {
             pubnub.publish({
                 channel: My_Channel_Name,
-                message: { action: cmd }
-            }, (status, response) => {
-                if (!status.error) {
-                    statusText.innerText = "Gesendet: " + (cmd === "next" ? "VORWÄRTS" : "RÜCKWÄRTS");
-                    statusText.style.color = "#00ff00";
-                    setTimeout(() => { statusText.style.color = "white"; }, 500);
-                } else {
-                    statusText.innerText = "Fehler!";
-                    statusText.style.color = "#ff4444";
-                }
+                message: { action: action }
             });
         }
 
-        // Tastatur-Steuerung
         document.addEventListener("keydown", (e) => {
-            // "next" bei Enter, Leertaste oder Pfeil Rechts
-            if (e.key === "Enter" || e.key === " " || e.key === "ArrowRight") {
-                e.preventDefault();
-                send("next");
-            }
-            // "prev" bei Pfeil Links
-            if (e.key === "ArrowLeft") {
-                send("prev");
-            }
+            if (e.key === "Enter" || e.key === "ArrowRight" || e.key === " ") send("next");
+            if (e.key === "ArrowLeft") send("prev");
         });
     </script>
 </body>
