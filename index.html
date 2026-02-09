@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Live Präsentation - Viewer</title>
+    <title>Live Präsentation</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
     <style>
@@ -10,27 +10,36 @@
             position: fixed; top: 10px; right: 10px; z-index: 100;
             padding: 8px 15px; background: rgba(0,0,0,0.7);
             border-radius: 20px; font-family: sans-serif; font-size: 13px;
-            border: 1px solid #444;
         }
-        #lehrer-bild { display: none; width: 400px; border-radius: 15px; margin-top: 20px; }
+        .img-container {
+            margin-top: 20px;
+            border: 5px solid #333;
+            border-radius: 15px;
+            overflow: hidden;
+            display: inline-block;
+        }
     </style>
 </head>
 <body>
 
-    <div id="status-bar">Status: <span id="status-text" style="color: gray;">Verbinde...</span></div>
+    <div id="status-bar">Status: <span id="status-text" style="color: orange;">Verbinde...</span></div>
 
     <div class="reveal">
         <div class="slides">
+            
             <section>
-                <h1>Willkommen</h1>
-                <p id="msg">Warte auf den Start der Präsentation...</p>
-                <img id="lehrer-bild" src="IMG-20260205-WA0000.jpg" alt="Vortrag">
+                <h2>Willkommen</h2>
+                <div class="img-container">
+                    <img src="IMG-20260205-WA0000.jpg" alt="Vortragsbild" style="max-width: 500px; display: block;">
+                </div>
+                <p>Bitte warten, bis es losgeht...</p>
             </section>
             
             <section>
-                <h2>Folie 2</h2>
+                <h2>FOLIE 2</h2>
                 <p>Die Steuerung erfolgt live.</p>
             </section>
+
         </div>
     </div>
 
@@ -39,50 +48,36 @@
     <script src="config.js"></script>
 
     <script>
-        Reveal.initialize({ controls: false, keyboard: false, touch: false });
-
-        const statusText = document.getElementById("status-text");
-        const lehrerBild = document.getElementById("lehrer-bild");
-        const msg = document.getElementById("msg");
-
-        const pubnub = new PubNub({
-            subscribeKey: Pub_Nub_api_Subscribe,
-            userId: "viewer_" + Math.random().toString(36).substring(7)
+        // Reveal.js initialisieren
+        Reveal.initialize({ 
+            controls: false, 
+            progress: true,
+            keyboard: false, 
+            touch: false 
         });
 
-        function updateUI(online) {
-            if (online) {
-                statusText.innerText = "Verbunden";
-                statusText.style.color = "#00ff00";
-                lehrerBild.style.display = "inline-block";
-                msg.innerText = "Präsentation ist aktiv!";
-            } else {
-                statusText.innerText = "Lehrer offline";
-                statusText.style.color = "red";
-                lehrerBild.style.display = "none";
-            }
-        }
+        const statusText = document.getElementById("status-text");
+
+        // PubNub Verbindung
+        const pubnub = new PubNub({
+            subscribeKey: Pub_Nub_api_Subscribe,
+            userId: "viewer_" + Math.floor(Math.random() * 999)
+        });
 
         pubnub.addListener({
-            status: (s) => { if(s.category === "PNConnectedCategory") console.log("Verbunden!"); },
+            status: (s) => {
+                if (s.category === "PNConnectedCategory") {
+                    statusText.innerText = "Verbunden";
+                    statusText.style.color = "#00ff00";
+                }
+            },
             message: (m) => {
                 if (m.message.action === "next") Reveal.next();
                 if (m.message.action === "prev") Reveal.prev();
-            },
-            presence: (p) => {
-                if (p.uuid === "teacher_presenter") {
-                    updateUI(p.action === "join" || p.action === "state-change");
-                }
             }
         });
 
-        pubnub.subscribe({ channels: [My_Channel_Name], withPresence: true });
-
-        // Sofort-Check beim Laden
-        pubnub.hereNow({ channels: [My_Channel_Name] }, (s, r) => {
-            const online = r.channels[My_Channel_Name].occupants.some(u => u.uuid === "teacher_presenter");
-            updateUI(online);
-        });
+        pubnub.subscribe({ channels: [My_Channel_Name] });
     </script>
 </body>
 </html>
