@@ -6,22 +6,18 @@
     <title>Presenter</title>
     <style>
         body { background: #111; color: white; font-family: sans-serif; text-align: center; display: flex; flex-direction: column; justify-content: center; height: 100vh; margin: 0; }
-        .btn { padding: 30px; margin: 10px; font-size: 24px; border-radius: 10px; border: none; cursor: pointer; }
+        .btn { padding: 40px; margin: 15px; font-size: 28px; border-radius: 15px; border: none; cursor: pointer; font-weight: bold; }
         .next { background: #28a745; color: white; }
         .prev { background: #dc3545; color: white; }
-        #status { margin-bottom: 20px; font-weight: bold; }
+        #status { font-size: 18px; margin-bottom: 20px; }
     </style>
 </head>
 <body>
 
-    <div id="status">Verbinde zu PubNub...</div>
+    <div id="status">Verbinde...</div>
     
-    <div>
-        <button class="btn prev" onclick="send('prev')">ZURÜCK</button>
-        <button class="btn next" onclick="send('next')">WEITER</button>
-    </div>
-
-    <p>Oder nutze Enter / Pfeiltasten</p>
+    <button class="btn next" onclick="send('next')">WEITER ➡</button>
+    <button class="btn prev" onclick="send('prev')">⬅ ZURÜCK</button>
 
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
     <script src="config.js"></script>
@@ -38,13 +34,13 @@
         pubnub.addListener({
             status: (s) => {
                 if (s.category === "PNConnectedCategory") {
-                    statusDiv.innerText = "VERBUNDEN ●";
+                    statusDiv.innerText = "BEREIT ●";
                     statusDiv.style.color = "#00ff00";
                 }
             }
         });
 
-        pubnub.subscribe({ channels: [My_Channel_Name], withPresence: true });
+        pubnub.subscribe({ channels: [My_Channel_Name] });
 
         function send(action) {
             pubnub.publish({
@@ -52,11 +48,6 @@
                 message: { action: action }
             });
         }
-
-        document.addEventListener("keydown", (e) => {
-            if (e.key === "Enter" || e.key === "ArrowRight" || e.key === " ") send("next");
-            if (e.key === "ArrowLeft") send("prev");
-        });
     </script>
 </body>
 </html>
