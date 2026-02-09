@@ -8,36 +8,37 @@
     <style>
         #status-bar {
             position: fixed; top: 10px; right: 10px; z-index: 100;
-            padding: 8px 15px; background: rgba(0,0,0,0.7);
-            border-radius: 20px; font-family: sans-serif; font-size: 13px;
+            padding: 8px 15px; background: rgba(0,0,0,0.8);
+            border-radius: 20px; font-family: sans-serif; font-size: 12px;
+            color: white; border: 1px solid #444;
         }
-        .img-container {
-            margin-top: 20px;
-            border: 5px solid #333;
-            border-radius: 15px;
-            overflow: hidden;
-            display: inline-block;
+        .reveal img {
+            max-height: 550px !important; /* Optimiert für Schachbretter */
+            border: 2px solid #fff;
+            border-radius: 5px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
         }
     </style>
 </head>
 <body>
 
-    <div id="status-bar">Status: <span id="status-text" style="color: orange;">Verbinde...</span></div>
+    <div id="status-bar">Status: <span id="status-text" style="color: #ff9900;">Verbinde...</span></div>
 
     <div class="reveal">
         <div class="slides">
             
             <section>
-                <h2>Willkommen</h2>
-                <div class="img-container">
-                    <img src="IMG-20260205-WA0000.jpg" alt="Vortragsbild" style="max-width: 500px; display: block;">
-                </div>
-                <p>Bitte warten, bis es losgeht...</p>
+                <h1>Schach-Analyse</h1>
+                <p>Willkommen zur heutigen Session.</p>
+                <p style="color: #666;">Klicke am Presenter auf "Weiter", um das Brett zu zeigen.</p>
             </section>
             
             <section>
-                <h2>FOLIE 2</h2>
-                <p>Die Steuerung erfolgt live.</p>
+                <h3>Stellungsanalyse</h3>
+                <div style="margin-top: 10px;">
+                    <img src="IMG-20260205-WA0000.jpg" alt="Schachstellung">
+                </div>
+                <p>Schwarz am Zug. Was ist die beste Fortsetzung?</p>
             </section>
 
         </div>
@@ -48,20 +49,20 @@
     <script src="config.js"></script>
 
     <script>
-        // Reveal.js initialisieren
-        Reveal.initialize({ 
+        const deck = new Reveal();
+        deck.initialize({ 
             controls: false, 
             progress: true,
-            keyboard: false, 
-            touch: false 
+            hash: true,
+            keyboard: false,
+            touch: false
         });
 
         const statusText = document.getElementById("status-text");
 
-        // PubNub Verbindung
         const pubnub = new PubNub({
             subscribeKey: Pub_Nub_api_Subscribe,
-            userId: "viewer_" + Math.floor(Math.random() * 999)
+            userId: "viewer_" + Math.floor(Math.random() * 1000)
         });
 
         pubnub.addListener({
@@ -72,8 +73,8 @@
                 }
             },
             message: (m) => {
-                if (m.message.action === "next") Reveal.next();
-                if (m.message.action === "prev") Reveal.prev();
+                if (m.message.action === "next") deck.next();
+                if (m.message.action === "prev") deck.prev();
             }
         });
 
