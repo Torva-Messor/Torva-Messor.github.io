@@ -2,73 +2,17 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Live Präsentation - Synchronisiert</title>
+    <title>PRESENTER CONTROL</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
-    <style>
-        #status-bar {
-            position: fixed; top: 10px; right: 10px; z-index: 100;
-            padding: 8px 15px; background: rgba(0,0,0,0.8);
-            border-radius: 20px; font-family: sans-serif; font-size: 11px;
-            color: white; border: 1px solid #444;
-        }
-        #start-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 999;
-            display: flex; justify-content: center; align-items: center;
-            color: white; font-family: sans-serif; cursor: pointer; text-align: center;
-        }
-        .reveal img { max-height: 450px !important; border: 2px solid #fff; }
-        
-        /* Styling für die AR-Liste */
-        .ar-list li { font-size: 0.7em; margin-bottom: 10px; line-height: 1.4; }
-        .ar-highlight { color: #42affa; font-weight: bold; }
-    </style>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
 </head>
 <body>
-
-    <div id="start-overlay" onclick="startPresentation()">
-        <div>
-            <h2>Präsentation beitreten</h2>
-            <p>Tippe hier, um zu synchronisieren.</p>
-        </div>
-    </div>
-
-    <div id="status-bar">Status: <span id="status-text" style="color: #ff9900;">Verbinde...</span></div>
-
-    <audio id="morse-audio" src="morse (2).mp3" preload="auto"></audio>
-
     <div class="reveal">
         <div class="slides">
-            
-            <section>
-                <h1>Willkommen</h1>
-                <p>Warte auf Start...</p>
-            </section>
-            
-            <section>
-                <h3>Stellungsanalyse</h3>
-                <img src="IMG-20260205-WA0000.jpg" alt="Schach">
-                <p>Schwarz am Zug.</p>
-            </section>
-
-            <section>
-                <h1>Test beendet</h1>
-                <p>Die Audio-Analyse ist abgeschlossen.</p>
-            </section>
-
-            <section>
-                <h3>AR-Funktion (WebAR)</h3>
-                <ul class="ar-list">
-                    <li><span class="ar-highlight">Keine App nötig:</span> Läuft direkt im Browser.</li>
-                    <li>Nach QR-Code Scan: Kamera einmalig freigeben.</li>
-                    <li>Das 3D-Objekt wird <b>fest im Raum</b> platziert (Tisch/Boden).</li>
-                    <li>Du kannst dich um das Objekt bewegen, nähern & Winkel ändern.</li>
-                    <li><b>Datenschutz:</b> Alles passiert lokal. Keine Speicherung von Bildern/Videos.</li>
-                </ul>
-                <p style="font-size: 0.5em; margin-top: 20px; color: #888;">Funktion kann jederzeit durch Schließen beendet werden.</p>
-            </section>
-
+            <section><h1>Start</h1></section>
+            <section><h3>Audio läuft jetzt bei allen...</h3></section>
+            <section><h1>Test beendet</h1></section>
+            <section><h3>AR Info</h3></section>
         </div>
     </div>
 
@@ -78,143 +22,38 @@
 
     <script>
         const deck = new Reveal();
-        const morseAudio = document.getElementById("morse-audio");
-        const statusText = document.getElementById("status-text");
-        let serverOffset = 0;
-
-        deck.initialize({ controls: false, progress: true, hash: true, keyboard: false, touch: false });
+        deck.initialize({ hash: true, controls: true }); // Controls AN
 
         const pubnub = new PubNub({
             subscribeKey: Pub_Nub_api_Subscribe,
-            publishKey: typeof Pub_Nub_api_Publish !== 'undefined' ? Pub_Nub_api_Publish : undefined,
-            userId: "user_" + Math.floor(Math.random() * 10000)
+            publishKey: Pub_Nub_api_Publish, // WICHTIG: Hier muss der Publish Key rein!
+            userId: "presenter_master"
         });
 
-        // --- 1. Hilfsfunktionen ---
-
-        async function getServerTime() {
-            try {
-                const result = await pubnub.time();
-                return Math.floor(result.timetoken / 10000);
-            } catch (e) { return Date.now(); }
-        }
-
-        // Wird beim Klick auf das Overlay ausgeführt
-        function startPresentation() {
-            document.getElementById("start-overlay").style.display = 'none';
-            
-            // Audio-Engine "aufwecken"
-            morseAudio.play().then(() => { 
-                morseAudio.pause(); 
-                morseAudio.currentTime = 0; 
-            }).catch(e => console.log("Audio Init"));
-
-            // Letzten Status abrufen (Für Späteinsteiger)
-            fetchLastState();
-        }
-
-        // Holt die letzte Nachricht aus dem Kanal-Verlauf (History)
-        function fetchLastState() {
-            pubnub.fetchMessages({
-                channels: [My_Channel_Name],
-                count: 1
-            }, (status, response) => {
-                if (response.channels && response.channels[My_Channel_Name]) {
-                    const lastMsg = response.channels[My_Channel_Name][0].message;
-                    handleMessage(lastMsg);
-                }
-            });
-        }
-
-        // --- 2. Logik für Nachrichten Empfang ---
-
-        function handleMessage(msg) {
-            // Folienwechsel durchführen
-            if (msg.slideIndex !== undefined && deck.getIndices().h !== msg.slideIndex) {
-                deck.slide(msg.slideIndex);
-            }
-
-            // Audio Logik (Nur auf Folie 1 -> Index 1)
-            if (msg.slideIndex === 1 && msg.action === "sync_state") {
-                const now = Date.now(); // Vereinfacht für Listener ohne ServerOffset-Check
-                const targetStart = msg.startTime;
-                
-                // Berechnen wo wir im Audio sein müssten
-                // Hinweis: Hier nutzen wir eine vereinfachte Logik für Späteinsteiger
-                // Wenn das Audio vor 5 Sekunden startete, springen wir zu Sekunde 5
-                if (msg.startTime) {
-                    // Wir holen uns die echte Serverzeit für Präzision (asynchron)
-                    getServerTime().then(serverNow => {
-                        const passedTime = serverNow - msg.startTime;
-                        if (passedTime > 0 && passedTime < (morseAudio.duration * 1000)) {
-                            morseAudio.currentTime = passedTime / 1000;
-                            morseAudio.play().catch(e => console.log("Autoplay blockiert"));
-                        } else if (passedTime <= 0) {
-                            // Audio startet erst noch (Sync)
-                            setTimeout(() => {
-                                morseAudio.currentTime = 0;
-                                morseAudio.play();
-                            }, Math.abs(passedTime));
-                        }
-                    });
-                }
-            } else {
-                // Auf allen anderen Folien: Ruhe
-                morseAudio.pause();
-                morseAudio.currentTime = 0;
-            }
-        }
-
-        pubnub.addListener({
-            status: (s) => {
-                if (s.category === "PNConnectedCategory") {
-                    statusText.innerText = "Verbunden";
-                    statusText.style.color = "#00ff00";
-                }
-            },
-            message: (m) => {
-                handleMessage(m.message);
-            }
-        });
-
-        pubnub.subscribe({ channels: [My_Channel_Name] });
-
-        // --- 3. Logik für den PRESENTER (Sender) ---
-
-        // Immer wenn DU die Folie wechselst, sendest du den Status an alle
+        // Wenn DU die Folie wechselst -> Sende Befehl an alle
         deck.on('slidechanged', async (event) => {
             const index = event.indexh;
-            let message = { 
-                action: "sync_state", 
-                slideIndex: index 
-            };
-
-            // Wenn wir auf die Audio-Folie (1) gehen, Zeitstempel mitsenden
-            if (index === 1) {
-                const now = await getServerTime();
-                message.startTime = now + 500; // Start in 500ms
+            
+            // Serverzeit holen für exakten Sync
+            let startTime = null;
+            if (index === 1) { // Wenn Schach-Folie (Index 1)
+                try {
+                    const t = await pubnub.time();
+                    // Audio soll in 1 Sekunde starten (Puffer für Netzwerk)
+                    startTime = Math.floor(t.timetoken / 10000) + 1000; 
+                } catch(e) { startTime = Date.now() + 1000; }
             }
 
-            // Status an PubNub senden
+            // Befehl senden
             pubnub.publish({
                 channel: My_Channel_Name,
-                message: message,
-                storeInHistory: true // WICHTIG für Späteinsteiger
+                message: { 
+                    index: index,
+                    startTime: startTime // Wird nur gesendet wenn nicht null
+                },
+                storeInHistory: true // Wichtig für Späteinsteiger
             });
-
-            // Lokales Audio-Handling für den Presenter selbst
-            if (index === 1) {
-                setTimeout(() => morseAudio.play(), 500);
-            } else {
-                morseAudio.pause();
-            }
         });
-
-        // Wenn Audio zu Ende, automatisch weiter (nur Presenter triggert das "Next" für alle)
-        morseAudio.onended = () => {
-            deck.next();
-        };
-
     </script>
 </body>
 </html>
