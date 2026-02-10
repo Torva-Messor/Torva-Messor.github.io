@@ -12,6 +12,13 @@
             border-radius: 20px; font-family: sans-serif; font-size: 12px;
             color: white; border: 1px solid #444;
         }
+        /* Overlay für den ersten Klick */
+        #start-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.9); z-index: 999;
+            display: flex; justify-content: center; align-items: center;
+            color: white; font-family: sans-serif; cursor: pointer;
+        }
         .reveal img {
             max-height: 550px !important;
             border: 2px solid #fff;
@@ -22,13 +29,19 @@
 </head>
 <body>
 
-    <div id="status-bar">Status: <span id="status-text" style="color: #ff9900;">Verbinde...</span></div>
+    <div id="start-overlay" onclick="startPresentation()">
+        <div style="text-align: center;">
+            <h2>Präsentation bereit</h2>
+            <p>Klicken, um Audio zu aktivieren und zu starten</p>
+        </div>
+    </div>
+
+    <div id="status-bar">Status: <span id="status-text" style="color: #ff9900;">Warte auf Start...</span></div>
 
     <audio id="morse-audio" src="morse (2).mp3" preload="auto"></audio>
 
     <div class="reveal">
         <div class="slides">
-            
             <section>
                 <h1>Test</h1>
                 <p>Test.</p>
@@ -47,7 +60,6 @@
                 <h1>Test beendet</h1>
                 <p>Die Analyse ist abgeschlossen.</p>
             </section>
-
         </div>
     </div>
 
@@ -58,6 +70,7 @@
     <script>
         const deck = new Reveal();
         const morseAudio = document.getElementById("morse-audio");
+        const overlay = document.getElementById("start-overlay");
 
         deck.initialize({ 
             controls: false, 
@@ -67,23 +80,30 @@
             touch: false
         });
 
-        // Event: Wenn die Folie gewechselt wird
+        // Funktion, die beim ersten Klick ausgeführt wird
+        function startPresentation() {
+            overlay.style.display = 'none'; // Overlay ausblenden
+            // Kurzer "Silent Play" um Audio-Kontext zu entsperren
+            morseAudio.play().then(() => {
+                morseAudio.pause();
+                morseAudio.currentTime = 0;
+            }).catch(e => console.log("Audio Init Fehlgeschlagen"));
+        }
+
         deck.on('slidechanged', event => {
-            // Wenn Folie 2 (Index 1) erreicht wird, Audio starten
             if (event.indexh === 1) {
-                morseAudio.currentTime = 0; 
-                morseAudio.play().catch(e => console.log("Interaktion nötig für Audio."));
+                console.log("Folie 2 erreicht - Audio wird gestartet");
+                morseAudio.play().catch(error => {
+                    console.error("Fehler beim Abspielen:", error);
+                });
             } else {
                 morseAudio.pause();
             }
         });
 
-        // NEU: Wenn das Audio zu Ende ist, zur nächsten Folie (Folie 3) springen
         morseAudio.onended = function() {
             deck.next();
         };
-
-        const statusText = document.getElementById("status-text");
 
         const pubnub = new PubNub({
             subscribeKey: Pub_Nub_api_Subscribe,
@@ -93,8 +113,8 @@
         pubnub.addListener({
             status: (s) => {
                 if (s.category === "PNConnectedCategory") {
-                    statusText.innerText = "Verbunden";
-                    statusText.style.color = "#00ff00";
+                    document.getElementById("status-text").innerText = "Verbunden";
+                    document.getElementById("status-text").style.color = "#00ff00";
                 }
             },
             message: (m) => {
@@ -104,6 +124,9 @@
         });
 
         pubnub.subscribe({ channels: [My_Channel_Name] });
+    </script>
+</body>
+</html>
     </script>
 </body>
 </html>
