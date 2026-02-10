@@ -2,17 +2,53 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>PRESENTER CONTROL</title>
+    <title>PRESENTER STEUERUNG</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+    <style>
+        body { background: #f0f0f0; }
+        #control-info {
+            position: fixed; top: 0; left: 0; width: 100%; 
+            background: #222; color: #fff; padding: 10px;
+            text-align: center; font-family: sans-serif; font-size: 14px; z-index: 100;
+        }
+        .reveal { margin-top: 40px; }
+        .status-dot { height: 10px; width: 10px; background-color: #bbb; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .online { background-color: #00ff00; }
+    </style>
 </head>
 <body>
+
+    <div id="control-info">
+        <span id="dot" class="status-dot"></span> 
+        Presenter Mode: <span id="status-text">Verbinde...</span>
+    </div>
+
     <div class="reveal">
         <div class="slides">
-            <section><h1>Start</h1></section>
-            <section><h3>Audio läuft jetzt bei allen...</h3></section>
-            <section><h1>Test beendet</h1></section>
-            <section><h3>AR Info</h3></section>
+            
+            <section>
+                <h2>Startseite</h2>
+                <p>Klicke "Rechts", um die Analyse zu starten.</p>
+            </section>
+            
+            <section>
+                <h3>Schach-Analyse</h3>
+                <p style="color: blue;">INFO: Audio-Sync wird jetzt an alle gesendet!</p>
+                <img src="IMG-20260205-WA0000.jpg" style="height: 200px; border: 1px solid #000;">
+            </section>
+
+            <section>
+                <h2>Analyse Beendet</h2>
+                <p>Audio stoppt automatisch.</p>
+            </section>
+
+            <section>
+                <h2>AR-Informationen</h2>
+                <p>Zuschauer sehen jetzt die WebAR-Details.</p>
+            </section>
+
         </div>
     </div>
 
@@ -21,38 +57,80 @@
     <script src="config.js"></script>
 
     <script>
+        // 1. Reveal.js initialisieren (mit aktivierten Controls für dich)
         const deck = new Reveal();
-        deck.initialize({ hash: true, controls: true }); // Controls AN
-
-        const pubnub = new PubNub({
-            subscribeKey: Pub_Nub_api_Subscribe,
-            publishKey: Pub_Nub_api_Publish, // WICHTIG: Hier muss der Publish Key rein!
-            userId: "presenter_master"
+        deck.initialize({
+            controls: true,
+            progress: true,
+            history: true,
+            center: true,
+            transition: 'slide'
         });
 
-        // Wenn DU die Folie wechselst -> Sende Befehl an alle
+        // 2. PubNub initialisieren
+        const pubnub = new PubNub({
+            subscribeKey: Pub_Nub_api_Subscribe,
+            publishKey: Pub_Nub_api_Publish, // Absolut notwendig für den Presenter!
+            userId: "master_presenter_" + Math.floor(Math.random() * 100)
+        });
+
+        const statusText = document.getElementById("status-text");
+        const dot = document.getElementById("dot");
+
+        // Status-Check
+        pubnub.addListener({
+            status: (s) => {
+                if (s.category === "PNConnectedCategory") {
+                    statusText.innerText = "Verbunden (Kanal: " + My_Channel_Name + ")";
+                    dot.classList.add("online");
+                }
+            }
+        });
+        pubnub.subscribe({ channels: [My_Channel_Name] });
+
+        // 3. Die Sende-Logik
         deck.on('slidechanged', async (event) => {
-            const index = event.indexh;
-            
-            // Serverzeit holen für exakten Sync
-            let startTime = null;
-            if (index === 1) { // Wenn Schach-Folie (Index 1)
+            const currentIndex = event.indexh;
+            let targetStartTime = null;
+
+            // Spezialfall: Folie 2 (Index 1) - Hier soll Audio starten
+            if (currentIndex === 1) {
                 try {
-                    const t = await pubnub.time();
-                    // Audio soll in 1 Sekunde starten (Puffer für Netzwerk)
-                    startTime = Math.floor(t.timetoken / 10000) + 1000; 
-                } catch(e) { startTime = Date.now() + 1000; }
+                    // Wir holen die exakte Serverzeit von PubNub
+                    const result = await pubnub.time();
+                    const serverTimeMs = Math.floor(result.timetoken / 10000);
+                    
+                    // Wir setzen den Startzeitpunkt in der nahen Zukunft (1 Sekunde Puffer)
+                    // So haben alle Handys Zeit, die Nachricht zu empfangen.
+                    targetStartTime = serverTimeMs + 1000; 
+                } catch (e) {
+                    // Fallback falls Server-Zeit nicht erreichbar
+                    targetStartTime = Date.now() + 1000;
+                }
             }
 
-            // Befehl senden
+            // Nachricht an alle Zuschauer (index.html) senden
             pubnub.publish({
                 channel: My_Channel_Name,
-                message: { 
-                    index: index,
-                    startTime: startTime // Wird nur gesendet wenn nicht null
+                message: {
+                    action: "sync_state",
+                    index: currentIndex,
+                    startTime: targetStartTime // Nur gesetzt bei Folie 1
                 },
-                storeInHistory: true // Wichtig für Späteinsteiger
+                storeInHistory: true // Ermöglicht Späteinsteigern das Synchronisieren
+            }, function(status, response) {
+                if (status.error) {
+                    console.error("Senden fehlgeschlagen:", status);
+                } else {
+                    console.log("Befehl gesendet für Folie:", currentIndex);
+                }
             });
+        });
+
+        // 4. Keyboard Steuerung auch für dich aktivieren
+        window.addEventListener('keydown', (e) => {
+            if (e.key === "ArrowRight") deck.next();
+            if (e.key === "ArrowLeft") deck.prev();
         });
     </script>
 </body>
