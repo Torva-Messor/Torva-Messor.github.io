@@ -2,66 +2,47 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Live Präsentation - Synchronisiert</title>
+    <title>Live Präsentation - High Sync</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
     <style>
         #status-bar {
             position: fixed; top: 10px; right: 10px; z-index: 100;
             padding: 8px 15px; background: rgba(0,0,0,0.8);
-            border-radius: 20px; font-family: sans-serif; font-size: 12px;
+            border-radius: 20px; font-family: sans-serif; font-size: 11px;
             color: white; border: 1px solid #444;
         }
         #start-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 999;
+            background: #000; z-index: 999;
             display: flex; justify-content: center; align-items: center;
             color: white; font-family: sans-serif; cursor: pointer; text-align: center;
         }
-        .reveal img {
-            max-height: 550px !important;
-            border: 2px solid #fff;
-            border-radius: 5px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
-        }
+        .reveal img { max-height: 550px !important; border: 2px solid #fff; }
     </style>
 </head>
 <body>
 
     <div id="start-overlay" onclick="startPresentation()">
         <div>
-            <h2>Bereit für die Analyse</h2>
-            <p>Bitte hier klicken, um Audio zu aktivieren.</p>
-            <small style="color: #888;">Danach wird alles automatisch gesteuert.</small>
+            <h2>Synchronisation starten</h2>
+            <p>Tippe hier, um die Audio-Engine zu kalibrieren.</p>
         </div>
     </div>
 
-    <div id="status-bar">Status: <span id="status-text" style="color: #ff9900;">Warte auf Start...</span></div>
+    <div id="status-bar">Sync: <span id="sync-val">Warten...</span> | Status: <span id="status-text" style="color: #ff9900;">Verbunden</span></div>
 
     <audio id="morse-audio" src="morse (2).mp3" preload="auto"></audio>
 
     <div class="reveal">
         <div class="slides">
-            
+            <section><h1>Bereit</h1><p>Warte auf Start...</p></section>
             <section>
-                <h1>Test</h1>
-                <p>Test.</p>
-                <p style="color: #666;">Warte auf das Signal des Presenters...</p>
+                <h3>Analyse</h3>
+                <img src="IMG-20260205-WA0000.jpg" alt="Schach">
+                <p>Audio läuft synchron...</p>
             </section>
-            
-            <section>
-                <h3>Stellungsanalyse</h3>
-                <div style="margin-top: 10px;">
-                    <img src="IMG-20260205-WA0000.jpg" alt="Schachstellung">
-                </div>
-                <p>Schwarz am Zug.</p>
-            </section>
-
-            <section>
-                <h1>Test beendet</h1>
-                <p>Die Analyse ist abgeschlossen.</p>
-            </section>
-
+            <section><h1>Test beendet</h1></section>
         </div>
     </div>
 
@@ -72,89 +53,72 @@
     <script>
         const deck = new Reveal();
         const morseAudio = document.getElementById("morse-audio");
-        const overlay = document.getElementById("start-overlay");
-        const statusText = document.getElementById("status-text");
+        const syncDisplay = document.getElementById("sync-val");
+        let serverOffset = 0; // Differenz zwischen lokaler Zeit und Serverzeit
 
-        deck.initialize({ 
-            controls: false, 
-            progress: true,
-            hash: true,
-            keyboard: false,
-            touch: false
-        });
+        deck.initialize({ controls: false, progress: true, hash: true, keyboard: false, touch: false });
 
         const pubnub = new PubNub({
             subscribeKey: Pub_Nub_api_Subscribe,
             publishKey: typeof Pub_Nub_api_Publish !== 'undefined' ? Pub_Nub_api_Publish : undefined,
-            userId: "user_" + Math.floor(Math.random() * 1000)
+            userId: "u_" + Math.random().toString(36).substring(7)
         });
 
-        // --- SYNCHRONISATIONS LOGIK ---
-
-        async function getServerTime() {
+        // 1. Uhren-Abgleich (Clock Drift Compensation)
+        async function syncClock() {
+            const start = Date.now();
             try {
                 const result = await pubnub.time();
-                return Math.floor(result.timetoken / 10000); // Zu Millisekunden konvertieren
+                const end = Date.now();
+                const latency = (end - start) / 2;
+                const serverTimeMs = Math.floor(result.timetoken / 10000);
+                // Offset berechnen: Wie viel "geht meine Uhr falsch" im Vergleich zum Server?
+                serverOffset = serverTimeMs - (end - latency);
+                syncDisplay.innerText = "OK (" + Math.round(latency) + "ms Latency)";
             } catch (e) {
-                return Date.now();
+                console.error("Sync failed", e);
             }
         }
 
         function startPresentation() {
-            overlay.style.display = 'none';
-            // Audio-Kontext für Browser freischalten
-            morseAudio.play().then(() => {
-                morseAudio.pause();
-                morseAudio.currentTime = 0;
-            }).catch(e => console.log("Audio-Freigabe erforderlich"));
+            document.getElementById("start-overlay").style.display = 'none';
+            syncClock();
+            morseAudio.play().then(() => { morseAudio.pause(); morseAudio.currentTime = 0; });
         }
 
-        // Event: Wenn eine Nachricht von PubNub kommt
         pubnub.addListener({
-            status: (s) => {
-                if (s.category === "PNConnectedCategory") {
-                    statusText.innerText = "Verbunden";
-                    statusText.style.color = "#00ff00";
-                }
-            },
-            message: async (m) => {
+            message: (m) => {
                 if (m.message.action === "next") deck.next();
                 if (m.message.action === "prev") deck.prev();
                 
                 if (m.message.action === "play_sync") {
-                    const now = await getServerTime();
-                    const delay = m.message.startTime - now;
+                    const scheduledStartTime = m.message.startTime;
+                    
+                    const playCheck = setInterval(() => {
+                        const currentCorrectedTime = Date.now() + serverOffset;
+                        const diff = scheduledStartTime - currentCorrectedTime;
 
-                    if (delay > 0) {
-                        setTimeout(() => {
-                            morseAudio.currentTime = 0;
-                            morseAudio.play();
-                        }, delay);
-                    } else {
-                        // Falls Nachricht verspätet: An die richtige Stelle springen
-                        const offset = Math.abs(delay) / 1000;
-                        if (offset < morseAudio.duration) {
-                            morseAudio.currentTime = offset;
+                        if (diff <= 0) {
+                            clearInterval(playCheck);
+                            morseAudio.currentTime = Math.abs(diff) / 1000; // Falls verpasst, springe vor
                             morseAudio.play();
                         }
-                    }
+                    }, 5); // Check alle 5ms für maximale Präzision
                 }
             }
         });
 
         pubnub.subscribe({ channels: [My_Channel_Name] });
 
-        // Event: Wenn die Folie wechselt (Logik für den Sender)
+        // Wenn Folie 2 erreicht wird, sendet das Gerät den Befehl für ALLE
         deck.on('slidechanged', async (event) => {
             if (event.indexh === 1) {
-                // Nur wenn dieses Gerät den Befehl gibt (Master-Logik optional)
-                // Wir senden einen Sync-Befehl an alle: Start in 500ms
-                const now = await getServerTime();
+                const nowCorrected = Date.now() + serverOffset;
                 pubnub.publish({
                     channel: My_Channel_Name,
                     message: { 
                         action: "play_sync", 
-                        startTime: now + 500 
+                        startTime: nowCorrected + 800 // Puffer für langsame Geräte
                     }
                 });
             } else {
@@ -162,37 +126,10 @@
             }
         });
 
-        // Automatisch weiter zur letzten Folie
-        morseAudio.onended = () => {
-            deck.next();
-        };
-    </script>
-</body>
-</html>
-        };
-
-        const pubnub = new PubNub({
-            subscribeKey: Pub_Nub_api_Subscribe,
-            userId: "viewer_" + Math.floor(Math.random() * 1000)
-        });
-
-        pubnub.addListener({
-            status: (s) => {
-                if (s.category === "PNConnectedCategory") {
-                    document.getElementById("status-text").innerText = "Verbunden";
-                    document.getElementById("status-text").style.color = "#00ff00";
-                }
-            },
-            message: (m) => {
-                if (m.message.action === "next") deck.next();
-                if (m.message.action === "prev") deck.prev();
-            }
-        });
-
-        pubnub.subscribe({ channels: [My_Channel_Name] });
-    </script>
-</body>
-</html>
+        morseAudio.onended = () => deck.next();
+        
+        // Regelmäßiger Sync im Hintergrund
+        setInterval(syncClock, 30000);
     </script>
 </body>
 </html>
