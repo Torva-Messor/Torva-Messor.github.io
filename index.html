@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>High-Precision Mobile Sync</title>
+    <title>Torva Sync - Viewer</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
@@ -10,87 +10,52 @@
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
     <style>
-        body { margin: 0; background-color: #000; overflow: hidden; -webkit-font-smoothing: antialiased; }
+        body { margin: 0; background-color: #000; overflow: hidden; }
+        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; font-family: sans-serif; }
+        #start-btn { padding: 20px 60px; background: #2196F3; color: white; border: none; border-radius: 50px; font-size: 22px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(33, 150, 243, 0.5); }
         
-        #status-bar { 
-            position: fixed; top: 10px; right: 10px; z-index: 9999; 
-            padding: 6px 12px; background: rgba(0,0,0,0.7); 
-            border-radius: 20px; font-family: sans-serif; font-size: 10px; 
-            color: white; pointer-events: none;
-        }
+        /* Fullscreen Container */
+        .fs-container { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background: #000; position: absolute; top: 0; left: 0; }
+        .fs-media { width: 100% !important; height: 100% !important; object-fit: contain; border: none; }
 
-        #start-overlay { 
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
-            background: #000; z-index: 10000; display: flex; 
-            justify-content: center; align-items: center; 
-        }
+        .ar-button { background: white; border-radius: 30px; border: none; position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); padding: 16px 32px; font-weight: bold; color: #4285f4; z-index: 101; }
 
-        #start-btn { 
-            padding: 22px 60px; background: #2196F3; color: white; border: none; 
-            border-radius: 50px; font-size: 24px; font-weight: bold; cursor: pointer;
-            box-shadow: 0 10px 30px rgba(33, 150, 243, 0.4);
-        }
-
-        /* HARDWARE ACCELERATION BOOST */
-        .fullscreen-wrapper {
-            width: 100vw; height: 100vh;
-            display: flex; justify-content: center; align-items: center;
-            background: #000;
-            transform: translateZ(0); /* Zwingt GPU Nutzung */
-            backface-visibility: hidden;
-        }
-
-        .fs-media {
-            width: 100% !important; height: 100% !important;
-            object-fit: contain;
-            will-change: transform; /* Optimiert Rendering für Mobile */
-        }
-
-        .ar-button {
-            background: white; border-radius: 30px; border: none; 
-            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%);
-            padding: 16px 32px; font-weight: bold; color: #4285f4; z-index: 101;
-            font-size: 16px;
-        }
-
-        .reveal .slides section { padding: 0 !important; }
+        /* Reveal Fixes */
+        .reveal .slides section { padding: 0 !important; width: 100% !important; height: 100% !important; }
+        #status { position: fixed; top: 10px; right: 10px; color: rgba(255,255,255,0.5); font-family: monospace; font-size: 10px; z-index: 9999; pointer-events: none; }
     </style>
 </head>
 <body>
 
     <div id="start-overlay">
+        <h2>Präsentation beitreten</h2>
         <button id="start-btn" onclick="initViewer()">START</button>
     </div>
 
-    <div id="status-bar">MOBILE SYNC ACTIVE | <span id="lat-txt">0ms</span></div>
+    <div id="status">SYNC: <span id="sync-val">OFF</span></div>
 
     <audio id="sync-audio" src="morse (2).mp3" preload="auto"></audio>
 
     <div class="reveal">
         <div class="slides">
-            <section><h1>Bereit?</h1></section>
+            <section><h1>Willkommen</h1></section>
             
             <section>
                 <div style="padding-top: 15vh;">
-                    <h3>Analyse läuft</h3>
+                    <h3>Analyse</h3>
                     <img src="IMG-20260205-WA0000.jpg" style="max-height: 50vh; border-radius: 10px;">
                 </div>
             </section>
 
             <section data-background-color="#000">
-                <div class="fullscreen-wrapper">
-                    <video id="sync-video" class="fs-media" playsinline preload="auto" muted>
-                        <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
-                    </video>
+                <div class="fs-container">
+                    <video id="sync-video" class="fs-media" playsinline src="qr-code-pubnub-torva-project.mp4"></video>
                 </div>
             </section>
 
             <section data-background-color="#000">
-                <div class="fullscreen-wrapper">
-                    <model-viewer id="ar-element" class="fs-media" 
-                        src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
-                        ar ar-modes="webxr scene-viewer quick-look" 
-                        camera-controls auto-rotate interaction-prompt="none">
+                <div class="fs-container">
+                    <model-viewer class="fs-media" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer" camera-controls auto-rotate interaction-prompt="none">
                         <button slot="ar-button" class="ar-button">📷 AR STARTEN</button>
                     </model-viewer>
                 </div>
@@ -104,95 +69,63 @@
 
     <script>
         const deck = new Reveal();
-        deck.initialize({ 
-            controls: false, progress: false, touch: false, transition: 'fade',
-            width: "100%", height: "100%", margin: 0, minScale: 1, maxScale: 1
-        });
+        deck.initialize({ controls: false, progress: false, touch: false, transition: 'fade', width: "100%", height: "100%", margin: 0 });
         
         const audio = document.getElementById("sync-audio");
         const video = document.getElementById("sync-video");
-        const latTxt = document.getElementById("lat-txt");
-
-        let pubnub;
         let serverTimeOffset = 0;
         let currentStartTime = 0;
 
         async function initViewer() {
             document.getElementById("start-overlay").style.display = 'none';
-            
-            // Mobile Unmute Strategy
-            try { 
-                audio.play(); audio.pause();
-                video.muted = false; // Wir wollen Ton!
-                video.play().then(() => video.pause());
-            } catch(e) {}
+            try { audio.play(); audio.pause(); video.load(); } catch(e) {}
 
-            pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "mob_" + Math.random().toString(36).substring(7) });
+            const pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "u_" + Math.random().toString(36).substring(7) });
 
             // Zeit-Sync
-            const startReq = Date.now();
-            const timeresp = await pubnub.time();
-            const networkLatency = (Date.now() - startReq) / 2;
-            serverTimeOffset = Math.floor(timeresp.timetoken / 10000) - (Date.now() - networkLatency);
-            latTxt.innerText = Math.round(networkLatency) + "ms";
+            const t1 = Date.now();
+            const res = await pubnub.time();
+            serverTimeOffset = Math.floor(res.timetoken / 10000) - (t1 + (Date.now() - t1) / 2);
 
             pubnub.addListener({
                 message: (m) => {
                     if (m.message.index !== undefined) deck.slide(m.message.index);
-                    currentStartTime = m.message.startTime || 0;
-                    handleMedia(m.message.index);
-                },
-                status: (s) => { if(s.category === "PNConnectedCategory") fetchState(); }
+                    currentStartTime = m.message.startTime;
+                    syncAll(true); // Harter Sync bei Wechsel
+                }
             });
             pubnub.subscribe({ channels: [My_Channel_Name] });
 
-            // Wir checken den Sync alle 2 Sekunden, um das Handy nicht zu überlasten
-            setInterval(autoCorrect, 2000); 
+            // Smooth-Sync Loop (alle 500ms)
+            setInterval(() => syncAll(false), 500);
         }
 
-        function handleMedia(idx) {
-            if (idx === 1) { video.pause(); applySync(audio); }
-            else if (idx === 2) { audio.pause(); applySync(video); }
+        function syncAll(isHard) {
+            const idx = deck.getState().indexh;
+            if (idx === 1) { video.pause(); manageSmoothSync(audio, isHard); }
+            else if (idx === 2) { audio.pause(); manageSmoothSync(video, isHard); }
             else { audio.pause(); video.pause(); }
         }
 
-        function fetchState() {
-            pubnub.fetchMessages({ channels: [My_Channel_Name], count: 1 }, (s, r) => {
-                if (r && r.channels[My_Channel_Name]) {
-                    const m = r.channels[My_Channel_Name][0].message;
-                    deck.slide(m.index);
-                    currentStartTime = m.startTime;
-                    handleMedia(m.index);
-                }
-            });
-        }
-
-        function applySync(element) {
+        function manageSmoothSync(el, isHard) {
             if (!currentStartTime) return;
-            const now = Date.now() + serverTimeOffset;
-            const targetPos = (now - currentStartTime) / 1000;
+            const target = ((Date.now() + serverTimeOffset) - currentStartTime) / 1000;
+            const diff = target - el.currentTime;
 
-            if (targetPos >= 0 && (targetPos < element.duration || isNaN(element.duration))) {
-                // MOBILE OPTIMIERUNG: Nur springen, wenn Abweichung > 0.5s
-                // Das verhindert das "Choppy"-Gefühl bei kleinen Netzschwankungen
-                const diff = Math.abs(element.currentTime - targetPos);
-                if (diff > 0.5) {
-                    element.currentTime = targetPos;
-                }
-                if (element.paused) element.play().catch(() => {
-                    // Fallback falls Browser Play blockiert
-                    element.muted = true; 
-                    element.play();
-                });
+            if (isHard || Math.abs(diff) > 1.5) {
+                el.currentTime = target;
+                el.playbackRate = 1.0;
+            } else if (Math.abs(diff) > 0.05) {
+                // Sanfte Geschwindigkeitsanpassung statt Sprung
+                el.playbackRate = diff > 0 ? 1.08 : 0.92;
             } else {
-                element.pause();
+                el.playbackRate = 1.0;
             }
-        }
 
-        function autoCorrect() {
-            const idx = deck.getState().indexh;
-            if (idx === 1) applySync(audio);
-            if (idx === 2) applySync(video);
+            if (el.paused && target > 0 && target < el.duration) el.play().catch(() => {
+                el.muted = true; el.play(); // Fallback für Mobile
+            });
+            document.getElementById("sync-val").innerText = Math.round(diff * 1000) + "ms";
         }
     </script>
 </body>
