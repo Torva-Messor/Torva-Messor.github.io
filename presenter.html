@@ -2,24 +2,24 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>PRESENTER - Steuerung</title>
+    <title>PRESENTER - Master Control</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
     <style>
-        #p-status { position: fixed; top: 0; left: 0; width: 100%; background: #333; color: white; padding: 10px; z-index: 100; text-align: center; font-family: sans-serif; }
+        #p-status { position: fixed; top: 0; left: 0; width: 100%; background: #222; color: white; padding: 10px; z-index: 100; text-align: center; font-family: sans-serif; border-bottom: 2px solid #2196F3; }
         .reveal { margin-top: 50px; }
     </style>
 </head>
 <body>
 
-    <div id="p-status">Status: <span id="st-txt" style="color:orange">Initialisiere...</span></div>
+    <div id="p-status">Status: <span id="st-txt" style="color:orange">Verbinde...</span></div>
 
     <div class="reveal">
         <div class="slides">
             <section><h1>Folie 1</h1><p>Startseite</p></section>
             <section><h1>Folie 2</h1><p>Schach + Audio-Sync</p></section>
-            <section><h1>Folie 3</h1><p>Ende-Seite</p></section>
-            <section><h1>Folie 4</h1><p>AR-Info Seite</p></section>
+            <section><h1>Folie 3</h1><p>Video-Sync (Vollbild)</p></section>
+            <section><h1>Folie 4</h1><p>AR-Modell Ansicht</p></section>
         </div>
     </div>
 
@@ -30,7 +30,6 @@
     <script>
         const deck = new Reveal();
         deck.initialize({ controls: true, progress: true, hash: true });
-
         const statusTxt = document.getElementById("st-txt");
 
         const pubnub = new PubNub({
@@ -42,7 +41,7 @@
         pubnub.addListener({
             status: (s) => {
                 if (s.category === "PNConnectedCategory") {
-                    statusTxt.innerText = "BEREIT ZUM SENDEN";
+                    statusTxt.innerText = "BEREIT (LIVE)";
                     statusTxt.style.color = "#00ff00";
                 }
             }
@@ -54,12 +53,13 @@
             const idx = event.indexh;
             let startT = null;
 
-            // Zeitstempel nur für Folie 2 (Index 1) generieren
-            if (idx === 1) {
+            // Sync-Zeitstempel für Folie 2 (Audio) ODER Folie 3 (Video)
+            if (idx === 1 || idx === 2) {
                 try {
                     const t = await pubnub.time();
-                    startT = Math.floor(t.timetoken / 10000) + 1000; // 1 Sekunde Vorlauf
-                } catch(e) { startT = Date.now() + 1000; }
+                    // 500ms Puffer für Netzwerk-Verzögerung
+                    startT = Math.floor(t.timetoken / 10000) + 500; 
+                } catch(e) { startT = Date.now() + 500; }
             }
 
             pubnub.publish({
