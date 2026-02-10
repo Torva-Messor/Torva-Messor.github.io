@@ -6,39 +6,62 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
     <style>
-        #status-bar {
-            position: fixed; top: 10px; right: 10px; z-index: 100;
-            padding: 8px 15px; background: rgba(0,0,0,0.8);
-            border-radius: 20px; font-family: sans-serif; font-size: 12px;
-            color: white; border: 1px solid #444;
+        /* Hintergrund für den gesamten Body, damit der Glass-Effekt wirkt */
+        body {
+            background: radial-gradient(circle at center, #2b2b2b 0%, #000000 100%);
         }
+
+        /* DEIN NEUES DESIGN (aus dem Screenshot) */
+        #morphButton {
+            position: fixed;
+            left: 50%;
+            bottom: 24px;
+            transform: translateX(-50%);
+            padding: 12px 30px;
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(230, 220, 255, 0.9);
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 50px;
+            backdrop-filter: blur(10px) saturate(180%);
+            -webkit-backdrop-filter: blur(10px) saturate(180%);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            z-index: 1000; /* Damit es immer über den Folien liegt */
+            transition: all 0.3s ease;
+        }
+
+        /* Bild-Styling für das Schachbrett */
         .reveal img {
-            max-height: 550px !important; /* Optimiert für Schachbretter */
-            border: 2px solid #fff;
-            border-radius: 5px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.7);
+            max-height: 550px !important;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 10px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.6);
         }
     </style>
 </head>
 <body>
 
-    <div id="status-bar">Status: <span id="status-text" style="color: #ff9900;">Verbinde...</span></div>
+    <div id="morphButton">
+        Status: <span id="status-text" style="color: #ff9966;">Verbinde...</span>
+    </div>
 
     <div class="reveal">
         <div class="slides">
             
             <section>
-                <h1>Test</h1>
-                <p>Test.</p>
-                <p style="color: #666;">Klicke am Presenter auf "Weiter", um das Brett zu zeigen.</p>
+                <h1>Schach-Analyse</h1>
+                <p style="opacity: 0.7;">Warte auf Startsignal...</p>
+                <div style="font-size: 0.8em; margin-top: 50px; opacity: 0.5;">
+                    Live-Präsentation bereit
+                </div>
             </section>
             
             <section>
-                <h3>Stellungsanalyse</h3>
-                <div style="margin-top: 10px;">
+                <h3>Die kritische Stellung</h3>
+                <div style="margin-top: 20px;">
                     <img src="IMG-20260205-WA0000.jpg" alt="Schachstellung">
                 </div>
-                <p>Schwarz am Zug.</p>
             </section>
 
         </div>
@@ -49,16 +72,18 @@
     <script src="config.js"></script>
 
     <script>
+        // Reveal.js starten
         const deck = new Reveal();
         deck.initialize({ 
-            controls: false, 
+            controls: false, // Keine Pfeile, nur Remote
             progress: true,
             hash: true,
-            keyboard: false,
-            touch: false
+            center: true,
+            keyboard: false // Tastatur aus, damit niemand pfuscht
         });
 
         const statusText = document.getElementById("status-text");
+        const morphBtn = document.getElementById("morphButton");
 
         const pubnub = new PubNub({
             subscribeKey: Pub_Nub_api_Subscribe,
@@ -68,11 +93,20 @@
         pubnub.addListener({
             status: (s) => {
                 if (s.category === "PNConnectedCategory") {
-                    statusText.innerText = "Verbunden";
-                    statusText.style.color = "#00ff00";
+                    statusText.innerText = "Online";
+                    statusText.style.color = "#4dff88"; // Helles Neon-Grün
+                    // Kleiner Effekt: Rahmen leuchtet kurz auf
+                    morphBtn.style.borderColor = "rgba(77, 255, 136, 0.5)";
+                    setTimeout(() => {
+                        morphBtn.style.borderColor = "rgba(255, 255, 255, 0.2)";
+                    }, 1000);
                 }
             },
             message: (m) => {
+                // Bei Nachricht kurz pulsieren
+                morphBtn.style.transform = "translateX(-50%) scale(1.05)";
+                setTimeout(() => morphBtn.style.transform = "translateX(-50%) scale(1)", 200);
+
                 if (m.message.action === "next") deck.next();
                 if (m.message.action === "prev") deck.prev();
             }
