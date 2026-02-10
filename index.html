@@ -2,58 +2,24 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Live Präsentation - AR & Sync Fix</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>High-Precision Live Sync</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
-
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
     <style>
-        body { margin: 0; background: #000; }
-        #status-bar { position: fixed; top: 10px; right: 10px; z-index: 100; padding: 6px 12px; background: rgba(0,0,0,0.8); border-radius: 20px; font-family: sans-serif; font-size: 11px; color: white; border: 1px solid #444; }
-        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; font-family: sans-serif; }
-        #start-btn { padding: 18px 45px; background: #2196F3; color: white; border: none; border-radius: 40px; font-size: 20px; font-weight: bold; cursor: pointer; }
+        body { margin: 0; background-color: #000; overflow: hidden; }
+        #status-bar { position: fixed; top: 10px; right: 10px; z-index: 9999; padding: 6px 12px; background: rgba(0,0,0,0.6); border-radius: 20px; font-family: sans-serif; font-size: 11px; color: white; border: 1px solid #444; }
+        #start-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 10000; display: flex; flex-direction: column; justify-content: center; align-items: center; color: white; font-family: sans-serif; }
+        #start-btn { padding: 20px 50px; background: #2196F3; color: white; border: none; border-radius: 50px; font-size: 22px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px rgba(33, 150, 243, 0.6); }
 
-        /* AR Bereich */
-        .ar-slide-container { width: 100%; height: 80vh; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .fullscreen-video { width: 100vw; height: 100vh; object-fit: contain; position: absolute; top: 0; left: 0; z-index: 1; }
+        model-viewer.fullscreen-ar { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; background-color: #111; z-index: 1; }
+        .ar-button { background: white; border-radius: 20px; border: none; position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 12px 25px; font-weight: bold; color: #4285f4; z-index: 100; }
         
-        model-viewer {
-            width: 90%;
-            height: 400px;
-            background-color: #1a1a1a;
-            border-radius: 15px;
-            overflow: hidden;
-            --poster-color: transparent;
-        }
-
-        /* Der AR-Aktivierungs-Button */
-        .ar-button {
-            background-image: url(https://modelviewer.dev/shared-assets/icons/ar_icon.png);
-            background-repeat: no-repeat;
-            background-size: 20px 20px;
-            background-position: 12px 50%;
-            background-color: #fff;
-            position: absolute;
-            left: 50%;
-            transform: translateX(-50%);
-            white-space: nowrap;
-            bottom: 16px;
-            padding: 0px 16px 0px 40px;
-            font-family: Roboto Regular, Helvetica Neue, sans-serif;
-            font-size: 14px;
-            color:#4285f4;
-            height: 36px;
-            line-height: 36px;
-            border-radius: 18px;
-            border: 1px solid #DADCE0;
-            display: block;
-            z-index: 999;
-            cursor: pointer;
-        }
-
-        .reveal img { max-height: 400px !important; border-radius: 8px; }
+        .reveal .slides section.fullscreen-slide { padding: 0 !important; width: 100vw; height: 100vh; }
     </style>
 </head>
 <body>
@@ -63,51 +29,28 @@
         <button id="start-btn" onclick="initViewer()">START</button>
     </div>
 
-    <div id="status-bar">Status: <span id="st-txt">Warte...</span></div>
+    <div id="status-bar">Status: <span id="st-txt">Warte...</span> | Latency: <span id="lat-txt">0ms</span></div>
+
     <audio id="sync-audio" src="morse (2).mp3" preload="auto"></audio>
 
     <div class="reveal">
         <div class="slides">
-            
-            <section><h1>Willkommen</h1><p>Gleich geht es los.</p></section>
+            <section><h1>Willkommen</h1></section>
             
             <section>
                 <h3>Stellungsanalyse</h3>
-                <img src="IMG-20260205-WA0000.jpg">
-                <p>Audio-Sync aktiv.</p>
+                <img src="IMG-20260205-WA0000.jpg" style="max-height: 50vh; border-radius: 8px;">
             </section>
 
-            <section><h1>AR Vorbereitung</h1><p>Bitte jetzt das Handy nutzen.</p></section>
-
-            <section>
-                <div class="ar-slide-container">
-                    <h3>Live AR Modell</h3>
-                    
-                    <model-viewer 
-                        id="ar-element"
-                        src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
-                        ar 
-                        ar-modes="webxr scene-viewer quick-look" 
-                        camera-controls 
-                        poster="https://modelviewer.dev/shared-assets/models/poster-astronaut.png"
-                        shadow-intensity="1" 
-                        auto-rotate>
-                        
-                        <button slot="ar-button" class="ar-button">
-                            IN DEINEM RAUM ANSEHEN
-                        </button>
-
-                        <div id="ar-failure" style="display:none; color: red; position: absolute; bottom: 10px;">
-                            AR nicht unterstützt auf diesem Gerät.
-                        </div>
-                    </model-viewer>
-                    
-                    <p style="font-size: 0.4em; margin-top: 20px;">
-                        Tippe auf den Button oben, um die Kamera zu öffnen.
-                    </p>
-                </div>
+            <section class="fullscreen-slide" data-background-color="#000">
+                <video id="sync-video" class="fullscreen-video" src="qr-code-pubnub-torva-project.mp4" playsinline></video>
             </section>
 
+            <section class="fullscreen-slide">
+                <model-viewer class="fullscreen-ar" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer" camera-controls auto-rotate>
+                    <button slot="ar-button" class="ar-button">📷 AR STARTEN</button>
+                </model-viewer>
+            </section>
         </div>
     </div>
 
@@ -117,71 +60,83 @@
 
     <script>
         const deck = new Reveal();
-        deck.initialize({ controls: false, progress: true, hash: false, touch: false });
+        deck.initialize({ controls: false, progress: false, touch: false, transition: 'fade', width: "100%", height: "100%", margin: 0 });
         
         const audio = document.getElementById("sync-audio");
+        const video = document.getElementById("sync-video");
         const statusTxt = document.getElementById("st-txt");
-        let pubnub;
+        const latTxt = document.getElementById("lat-txt");
 
-        // Fehlerbehandlung für AR
-        document.querySelector('#ar-element').addEventListener('ar-status', (event) => {
-            if (event.detail.status === 'failed') {
-                document.querySelector('#ar-failure').style.display = 'block';
-            }
-        });
+        let pubnub;
+        let serverTimeOffset = 0; // Differenz zwischen lokaler Zeit und PubNub Zeit
+        let currentStartTime = 0;
+        let syncInterval;
 
         async function initViewer() {
             document.getElementById("start-overlay").style.display = 'none';
-            statusTxt.innerText = "Verbinde...";
+            
+            // 1. Initialer Medientest
+            try { await audio.play(); audio.pause(); video.load(); } catch(e) {}
 
-            try { await audio.play(); audio.pause(); audio.currentTime = 0; } catch (e) {}
+            // 2. PubNub Setup
+            pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "v_" + Math.random().toString(36).substring(7) });
 
-            pubnub = new PubNub({
-                subscribeKey: Pub_Nub_api_Subscribe,
-                userId: "user_" + Math.random().toString(36).substring(7)
-            });
+            // 3. Zeit-Sync: Berechne exakten Offset zum Server
+            const startRequest = Date.now();
+            const timeresp = await pubnub.time();
+            const endRequest = Date.now();
+            const networkLatency = (endRequest - startRequest) / 2;
+            const pnbTimeMs = Math.floor(timeresp.timetoken / 10000);
+            serverTimeOffset = pnbTimeMs - (endRequest - networkLatency);
+            latTxt.innerText = Math.round(networkLatency) + "ms";
 
             pubnub.addListener({
-                status: (s) => {
-                    if (s.category === "PNConnectedCategory") {
-                        statusTxt.innerText = "LIVE";
-                        statusTxt.style.color = "#00ff00";
-                        fetchState();
-                    }
-                },
+                status: (s) => { if(s.category === "PNConnectedCategory") { statusTxt.innerText = "LIVE"; fetchState(); } },
                 message: (m) => handleMessage(m.message)
             });
-
             pubnub.subscribe({ channels: [My_Channel_Name] });
-        }
 
-        function fetchState() {
-            pubnub.fetchMessages({ channels: [My_Channel_Name], count: 1 }, (s, r) => {
-                if (r && r.channels[My_Channel_Name]) {
-                    handleMessage(r.channels[My_Channel_Name][0].message);
-                }
-            });
+            // 4. Hintergrund-Wächter: Alle 2s Sync prüfen
+            setInterval(autoCorrect, 2000);
         }
 
         function handleMessage(msg) {
             if (msg.index !== undefined) deck.slide(msg.index);
-            if (msg.index === 1 && msg.startTime) {
-                syncAudio(msg.startTime);
+            currentStartTime = msg.startTime || 0;
+            
+            // Medien-Switch
+            if (msg.index === 1) { video.pause(); applySync(audio); }
+            else if (msg.index === 2) { audio.pause(); applySync(video); }
+            else { audio.pause(); video.pause(); }
+        }
+
+        function fetchState() {
+            pubnub.fetchMessages({ channels: [My_Channel_Name], count: 1 }, (s, r) => {
+                if (r && r.channels[My_Channel_Name]) handleMessage(r.channels[My_Channel_Name][0].message);
+            });
+        }
+
+        function applySync(element) {
+            if (!currentStartTime) return;
+
+            const now = Date.now() + serverTimeOffset;
+            const targetPos = (now - currentStartTime) / 1000;
+
+            if (targetPos >= 0 && (targetPos < element.duration || isNaN(element.duration))) {
+                // Nur springen, wenn Abweichung > 0.15s (für sanfteren Lauf)
+                if (Math.abs(element.currentTime - targetPos) > 0.15) {
+                    element.currentTime = targetPos;
+                }
+                if (element.paused) element.play().catch(() => {});
             } else {
-                audio.pause();
-                audio.currentTime = 0;
+                element.pause();
             }
         }
 
-        function syncAudio(startTime) {
-            pubnub.time().then((t) => {
-                const serverNow = Math.floor(t.timetoken / 10000);
-                const elapsed = (serverNow - startTime) / 1000;
-                if (elapsed >= 0 && elapsed < audio.duration) {
-                    audio.currentTime = elapsed;
-                    audio.play().catch(e => console.log("Audio locked"));
-                }
-            });
+        function autoCorrect() {
+            const idx = deck.getState().indexh;
+            if (idx === 1) applySync(audio);
+            if (idx === 2) applySync(video);
         }
     </script>
 </body>
