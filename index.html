@@ -2,65 +2,74 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Live Viewer - AR & Sync</title>
+    <title>Live Präsentation - AR & Sync</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
 
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.3.0/model-viewer.min.js"></script>
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
     <style>
-        /* --- UI & Overlay Styles --- */
-        body { margin: 0; overflow: hidden; background-color: black; }
+        /* Grund-Design */
+        body { margin: 0; background-color: black; color: white; }
 
+        /* Status oben rechts */
         #status-bar {
             position: fixed; top: 10px; right: 10px; z-index: 100;
             padding: 6px 12px; background: rgba(0,0,0,0.8);
             border-radius: 20px; font-family: sans-serif; font-size: 11px;
-            color: white; border: 1px solid #444; pointer-events: none;
+            border: 1px solid #444; pointer-events: none;
         }
 
+        /* Start-Bildschirm (Wichtig für Audio-Freischaltung) */
         #start-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: #000; z-index: 9999; display: flex; 
             flex-direction: column; justify-content: center; align-items: center;
-            color: white; font-family: sans-serif; text-align: center;
+            text-align: center; font-family: sans-serif;
         }
 
         #start-btn {
-            padding: 15px 40px; background: #2196F3; color: white; border: none;
-            border-radius: 30px; font-size: 18px; font-weight: bold; cursor: pointer; margin-top: 20px;
-            box-shadow: 0 0 15px rgba(33, 150, 243, 0.5);
+            padding: 18px 45px; background: #2196F3; color: white; border: none;
+            border-radius: 40px; font-size: 20px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 0 20px rgba(33, 150, 243, 0.4); margin-top: 20px;
         }
 
-        /* --- Slide Content --- */
+        /* Folien-Inhalt */
         .reveal img { max-height: 400px !important; border: 2px solid #fff; border-radius: 8px; }
         
-        /* --- AR Styles --- */
-        model-viewer {
+        /* AR Viewer Design */
+        .ar-container {
             width: 100%;
-            height: 50vh; /* Nimmt die Hälfte der Höhe ein */
-            min-height: 400px;
-            background-color: #222;
-            border-radius: 10px;
-            margin: 0 auto;
+            height: 500px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
 
+        model-viewer {
+            width: 90%;
+            height: 450px;
+            background-color: #1a1a1a;
+            border-radius: 15px;
+            --poster-color: transparent;
+        }
+
+        /* Der Button, um die Kamera zu starten */
         .ar-button {
-            background-color: white;
-            border-radius: 20px;
+            background-color: #2196F3;
+            border-radius: 8px;
             border: none;
+            padding: 12px 24px;
+            font-weight: bold;
+            color: white;
             position: absolute;
-            bottom: 16px;
+            bottom: 20px;
             left: 50%;
             transform: translateX(-50%);
-            padding: 10px 20px;
-            font-weight: bold;
-            font-size: 14px;
-            color: black;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-            display: flex; align-items: center; gap: 8px;
+            z-index: 999;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
     </style>
 </head>
@@ -68,7 +77,7 @@
 
     <div id="start-overlay">
         <h2>Präsentation beitreten</h2>
-        <p>Tippe auf START, um Audio & AR zu aktivieren.</p>
+        <p>Klicke Start für Audio-Synchronisation & AR</p>
         <button id="start-btn" onclick="initViewer()">START</button>
     </div>
 
@@ -81,38 +90,40 @@
             
             <section>
                 <h1>Willkommen</h1>
-                <p>Bitte warten, die Präsentation startet gleich.</p>
+                <p>Die Präsentation wird vom Host gesteuert.</p>
             </section>
             
             <section>
                 <h3>Stellungsanalyse</h3>
                 <img src="IMG-20260205-WA0000.jpg" alt="Schachstellung">
-                <p style="font-size: 0.6em; color: #aaa;">(Audio läuft synchron)</p>
+                <p style="font-size: 0.5em; color: #2196F3;">Audio aktiv</p>
             </section>
 
             <section>
-                <h1>Test beendet</h1>
-                <p>Gleich folgt die AR-Demonstration.</p>
+                <h1>Vorbereitung AR</h1>
+                <p>Bitte halte dein Smartphone bereit.</p>
             </section>
 
             <section>
-                <h3>AR-Würfel</h3>
-                
-                <model-viewer 
-                    src="https://modelviewer.dev/shared-assets/models/Cube.gltf" 
-                    ar 
-                    ar-modes="webxr scene-viewer quick-look" 
-                    camera-controls 
-                    auto-rotate
-                    shadow-intensity="1">
-                    
-                    <button slot="ar-button" class="ar-button">
-                        📷 Im Raum ansehen
-                    </button>
-                </model-viewer>
-
-                <p style="font-size: 0.5em; margin-top: 10px; color: #888;">
-                    Drehe den Würfel mit dem Finger.<br>Auf dem Handy: Klicke den Button, um ihn in den Raum zu stellen.
+                <h3>AR Live-Modell</h3>
+                <div class="ar-container">
+                    <model-viewer 
+                        src="https://modelviewer.dev/shared-assets/models/Cube.gltf"
+                        ios-src="https://modelviewer.dev/shared-assets/models/Cube.gltf"
+                        ar 
+                        ar-modes="webxr scene-viewer quick-look" 
+                        camera-controls 
+                        auto-rotate 
+                        shadow-intensity="1"
+                        alt="3D Würfel">
+                        
+                        <button slot="ar-button" class="ar-button">
+                            WÜRFEL IM RAUM PLATZIEREN
+                        </button>
+                    </model-viewer>
+                </div>
+                <p style="font-size: 0.4em; color: #888; margin-top: 10px;">
+                    Hinweis: AR erfordert ein Smartphone und eine HTTPS-Verbindung.
                 </p>
             </section>
 
@@ -121,38 +132,39 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
-    <script src="config.js"></script> <script>
-        // --- Init Reveal.js (Viewer Mode) ---
+    <script src="config.js"></script>
+
+    <script>
+        // 1. Reveal.js initialisieren
         const deck = new Reveal();
         deck.initialize({ 
-            controls: false, // Keine Pfeile für Zuschauer
+            controls: false, 
             progress: true, 
             hash: false, 
-            keyboard: false, 
-            touch: false, // Wischen deaktivieren
-            transition: 'slide'
+            touch: false, // Zuschauer kann nicht selbst wischen
+            transition: 'slide' 
         });
         
         const audio = document.getElementById("sync-audio");
         const statusTxt = document.getElementById("st-txt");
         let pubnub;
 
-        // --- Start Funktion ---
+        // 2. Start-Funktion
         async function initViewer() {
             document.getElementById("start-overlay").style.display = 'none';
             statusTxt.innerText = "Verbinde...";
 
-            // Audio-Engine "aufwecken" (Workaround für Mobile)
+            // Audio "freischalten"
             try { 
                 await audio.play(); 
                 audio.pause(); 
                 audio.currentTime = 0; 
-            } catch (e) { console.log("Audio Autoplay noch gesperrt"); }
+            } catch (e) { console.log("Audio braucht Benutzerklick"); }
 
-            // PubNub verbinden
+            // PubNub Setup
             pubnub = new PubNub({
                 subscribeKey: Pub_Nub_api_Subscribe,
-                userId: "viewer_" + Math.random().toString(36).substring(7)
+                userId: "user_" + Math.random().toString(36).substring(7)
             });
 
             pubnub.addListener({
@@ -160,8 +172,7 @@
                     if (s.category === "PNConnectedCategory") {
                         statusTxt.innerText = "LIVE";
                         statusTxt.style.color = "#00ff00";
-                        // Sofort aktuellen Status holen für Late-Joiner
-                        fetchState();
+                        fetchState(); // Letzten Stand holen
                     }
                 },
                 message: (m) => handleMessage(m.message)
@@ -170,7 +181,7 @@
             pubnub.subscribe({ channels: [My_Channel_Name] });
         }
 
-        // --- Status abrufen (Was habe ich verpasst?) ---
+        // 3. Letzten Stand der Präsentation abfragen
         function fetchState() {
             pubnub.fetchMessages({ channels: [My_Channel_Name], count: 1 }, (s, r) => {
                 if (r && r.channels[My_Channel_Name]) {
@@ -179,50 +190,31 @@
             });
         }
 
-        // --- Nachrichten verarbeiten ---
+        // 4. Nachrichten verarbeiten
         function handleMessage(msg) {
-            // 1. Folie wechseln
+            // Folienwechsel
             if (msg.index !== undefined) {
                 deck.slide(msg.index);
             }
 
-            // 2. Audio Logik (Nur auf Folie 2 / Index 1)
+            // Audio-Sync (Nur Folie Index 1)
             if (msg.index === 1 && msg.startTime) {
                 syncAudio(msg.startTime);
             } else {
-                // Auf allen anderen Folien: Audio aus
                 audio.pause();
                 audio.currentTime = 0;
             }
         }
 
-        // --- Audio Sync Logik ---
+        // 5. Präziser Audio-Sync
         function syncAudio(startTime) {
-            // Wir nutzen die Serverzeit von PubNub für Präzision
             pubnub.time().then((t) => {
-                const serverNow = Math.floor(t.timetoken / 10000); // Konvertierung in Millisekunden
-                const elapsed = serverNow - startTime; // Verstrichene Zeit seit Startbefehl
+                const serverNow = Math.floor(t.timetoken / 10000);
+                const elapsed = (serverNow - startTime) / 1000; // in Sekunden
 
-                if (elapsed >= 0) {
-                    const seekPos = elapsed / 1000; // Sekunden
-                    
-                    if (seekPos < audio.duration || isNaN(audio.duration)) {
-                        // Springe zur aktuellen Position (Late-Joiner Sync)
-                        if (Math.abs(audio.currentTime - seekPos) > 0.5) {
-                            audio.currentTime = seekPos;
-                        }
-                        // Nur abspielen, wenn nicht schon läuft
-                        if (audio.paused) {
-                            audio.play().catch(e => console.error("Audio Blocked:", e));
-                        }
-                    } else {
-                        // Audio ist schon vorbei
-                        audio.pause();
-                    }
-                } else {
-                    // Startzeit liegt minimal in Zukunft (Netzwerklatenz) -> Start bei 0
-                    audio.currentTime = 0;
-                    audio.play();
+                if (elapsed >= 0 && elapsed < audio.duration) {
+                    audio.currentTime = elapsed;
+                    audio.play().catch(e => console.log("Audio blockiert"));
                 }
             });
         }
