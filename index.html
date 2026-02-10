@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Live Präsentation</title>
+    <title>Live Präsentation - Synchronisiert</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
     <style>
@@ -12,12 +12,11 @@
             border-radius: 20px; font-family: sans-serif; font-size: 12px;
             color: white; border: 1px solid #444;
         }
-        /* Overlay für den ersten Klick */
         #start-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 999;
+            background: rgba(0,0,0,0.95); z-index: 999;
             display: flex; justify-content: center; align-items: center;
-            color: white; font-family: sans-serif; cursor: pointer;
+            color: white; font-family: sans-serif; cursor: pointer; text-align: center;
         }
         .reveal img {
             max-height: 550px !important;
@@ -30,9 +29,10 @@
 <body>
 
     <div id="start-overlay" onclick="startPresentation()">
-        <div style="text-align: center;">
-            <h2>Präsentation bereit</h2>
-            <p>Klicken, um Audio zu aktivieren und zu starten</p>
+        <div>
+            <h2>Bereit für die Analyse</h2>
+            <p>Bitte hier klicken, um Audio zu aktivieren.</p>
+            <small style="color: #888;">Danach wird alles automatisch gesteuert.</small>
         </div>
     </div>
 
@@ -42,10 +42,11 @@
 
     <div class="reveal">
         <div class="slides">
+            
             <section>
                 <h1>Test</h1>
                 <p>Test.</p>
-                <p style="color: #666;">Klicke am Presenter auf "Weiter", um das Brett zu zeigen.</p>
+                <p style="color: #666;">Warte auf das Signal des Presenters...</p>
             </section>
             
             <section>
@@ -60,6 +61,7 @@
                 <h1>Test beendet</h1>
                 <p>Die Analyse ist abgeschlossen.</p>
             </section>
+
         </div>
     </div>
 
@@ -71,6 +73,7 @@
         const deck = new Reveal();
         const morseAudio = document.getElementById("morse-audio");
         const overlay = document.getElementById("start-overlay");
+        const statusText = document.getElementById("status-text");
 
         deck.initialize({ 
             controls: false, 
@@ -80,29 +83,92 @@
             touch: false
         });
 
-        // Funktion, die beim ersten Klick ausgeführt wird
+        const pubnub = new PubNub({
+            subscribeKey: Pub_Nub_api_Subscribe,
+            publishKey: typeof Pub_Nub_api_Publish !== 'undefined' ? Pub_Nub_api_Publish : undefined,
+            userId: "user_" + Math.floor(Math.random() * 1000)
+        });
+
+        // --- SYNCHRONISATIONS LOGIK ---
+
+        async function getServerTime() {
+            try {
+                const result = await pubnub.time();
+                return Math.floor(result.timetoken / 10000); // Zu Millisekunden konvertieren
+            } catch (e) {
+                return Date.now();
+            }
+        }
+
         function startPresentation() {
-            overlay.style.display = 'none'; // Overlay ausblenden
-            // Kurzer "Silent Play" um Audio-Kontext zu entsperren
+            overlay.style.display = 'none';
+            // Audio-Kontext für Browser freischalten
             morseAudio.play().then(() => {
                 morseAudio.pause();
                 morseAudio.currentTime = 0;
-            }).catch(e => console.log("Audio Init Fehlgeschlagen"));
+            }).catch(e => console.log("Audio-Freigabe erforderlich"));
         }
 
-        deck.on('slidechanged', event => {
+        // Event: Wenn eine Nachricht von PubNub kommt
+        pubnub.addListener({
+            status: (s) => {
+                if (s.category === "PNConnectedCategory") {
+                    statusText.innerText = "Verbunden";
+                    statusText.style.color = "#00ff00";
+                }
+            },
+            message: async (m) => {
+                if (m.message.action === "next") deck.next();
+                if (m.message.action === "prev") deck.prev();
+                
+                if (m.message.action === "play_sync") {
+                    const now = await getServerTime();
+                    const delay = m.message.startTime - now;
+
+                    if (delay > 0) {
+                        setTimeout(() => {
+                            morseAudio.currentTime = 0;
+                            morseAudio.play();
+                        }, delay);
+                    } else {
+                        // Falls Nachricht verspätet: An die richtige Stelle springen
+                        const offset = Math.abs(delay) / 1000;
+                        if (offset < morseAudio.duration) {
+                            morseAudio.currentTime = offset;
+                            morseAudio.play();
+                        }
+                    }
+                }
+            }
+        });
+
+        pubnub.subscribe({ channels: [My_Channel_Name] });
+
+        // Event: Wenn die Folie wechselt (Logik für den Sender)
+        deck.on('slidechanged', async (event) => {
             if (event.indexh === 1) {
-                console.log("Folie 2 erreicht - Audio wird gestartet");
-                morseAudio.play().catch(error => {
-                    console.error("Fehler beim Abspielen:", error);
+                // Nur wenn dieses Gerät den Befehl gibt (Master-Logik optional)
+                // Wir senden einen Sync-Befehl an alle: Start in 500ms
+                const now = await getServerTime();
+                pubnub.publish({
+                    channel: My_Channel_Name,
+                    message: { 
+                        action: "play_sync", 
+                        startTime: now + 500 
+                    }
                 });
             } else {
                 morseAudio.pause();
             }
         });
 
-        morseAudio.onended = function() {
+        // Automatisch weiter zur letzten Folie
+        morseAudio.onended = () => {
             deck.next();
+        };
+    </script>
+</body>
+</html>
         };
 
         const pubnub = new PubNub({
