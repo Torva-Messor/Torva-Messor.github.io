@@ -11,7 +11,7 @@
     <style>
         :root { 
             --accent: #00f2ff; 
-            --damage: #ff0000;
+            --damage: #ff3333;
             --heal: #00ff88;
             --bg: #050505; 
             --board-bg: #2b2b2b;
@@ -36,7 +36,7 @@
             width: 55vmin; height: 55vmin;
             transition: all 1s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        .dot { width: 100%; height: 100%; transition: background 0.3s, transform 0.8s; }
+        .dot { width: 100%; height: 100%; transition: background 0.3s, transform 0.8s, box-shadow 0.3s; }
 
         /* Modi */
         .mode-go { background: var(--board-bg); gap: 2px; transform: scale(0.9); border: 1px solid #444; border-radius: 4px; padding: 10px; }
@@ -47,9 +47,20 @@
 
         .mode-qr { background: transparent; gap: 4px; transform: scale(1.1); border: none; padding: 0; }
         .mode-qr .dot { border-radius: 2px; transform: scale(1); }
-        .mode-qr .dot.active { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+        
+        /* QR Dot Zustände */
+        .mode-qr .dot.active { background: var(--accent); box-shadow: 0 0 5px var(--accent); }
         .mode-qr .dot.inactive { background: rgba(255,255,255,0.05); transform: scale(0.2); }
-        .mode-qr .dot.damaged { background: var(--damage) !important; box-shadow: 0 0 15px var(--damage); }
+        
+        /* WICHTIG: Finder Patterns (Die großen Ecken) dürfen nicht rot werden */
+        .mode-qr .dot.finder { background: #fff !important; box-shadow: 0 0 10px #fff !important; z-index: 2; }
+
+        /* Damage Styling */
+        .mode-qr .dot.damaged { 
+            background: var(--damage) !important; 
+            box-shadow: 0 0 15px var(--damage) !important;
+            transform: scale(0.8) rotate(45deg); /* Visueller Glitch-Effekt */
+        }
 
         /* --- VIDEO --- */
         #video-overlay { position: fixed; inset: 0; background: #000; z-index: 5000; display: flex; opacity: 0; pointer-events: none; transition: 0.5s; }
@@ -59,39 +70,37 @@
         /* --- AR STYLING --- */
         model-viewer {
             width: 100%;
-            height: 60vh;
+            height: 70vh; /* Größer für bessere Sichtbarkeit */
             --poster-color: transparent;
+            margin: 0 auto;
         }
         
-        /* Der Button, den die Zuschauer klicken */
+        /* Der AR Button - Wichtig: Hoher Z-Index und Pointer-Events */
         .ar-trigger-button {
-            background: var(--accent);
+            background-color: var(--accent);
             color: black;
+            border-radius: 30px;
             border: none;
-            padding: 15px 30px;
-            font-family: 'Inter', sans-serif;
+            padding: 12px 24px;
+            font-family: 'Courier New', monospace;
             font-weight: bold;
-            border-radius: 50px;
-            font-size: 1.1rem;
-            cursor: pointer;
+            font-size: 16px;
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: block;
+            z-index: 100;
             box-shadow: 0 0 20px var(--accent);
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 20px;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); box-shadow: 0 0 10px var(--accent); }
-            50% { transform: scale(1.05); box-shadow: 0 0 25px var(--accent); }
-            100% { transform: scale(1); box-shadow: 0 0 10px var(--accent); }
+            cursor: pointer;
+            white-space: nowrap;
         }
 
         /* --- UI & TEXT --- */
         #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
         #btn-start { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 20px 50px; font-size: 1.2rem; border-radius: 50px; cursor: pointer; }
 
-        .matrix-text { color: var(--matrix-green); font-size: 0.9rem; margin-top: 55vh; background: rgba(0,0,0,0.7); padding: 10px; display: inline-block; }
+        .matrix-text { color: var(--matrix-green); font-size: 0.9rem; margin-top: 55vh; background: rgba(0,0,0,0.8); padding: 15px; display: inline-block; border: 1px solid var(--matrix-green); }
         
         .reveal { z-index: 2; }
         .reveal .slides section { background: transparent !important; }
@@ -115,12 +124,12 @@
         <div class="slides">
             
             <section>
-                <h3 style="margin-bottom: 55vh; opacity: 0.7; letter-spacing: 4px;">ORIGIN</h3>
+                <h3 style="margin-bottom: 55vh; opacity: 0.7; letter-spacing: 4px; text-shadow: 0 0 10px var(--accent);">ORIGIN</h3>
             </section>
 
             <section>
                 <div class="matrix-text" id="qr-status-text">
-                    > DECODING_SIGNAL...<br>
+                    > SCANNING_GRID...<br>
                     > MATRIX_READY
                 </div>
             </section>
@@ -129,25 +138,30 @@
                 <h3 style="opacity: 0.5;">VIDEO TRANSMISSION</h3>
             </section>
 
-            <section>
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
-                    <h2 style="color: white; font-size: 1.5rem; letter-spacing: 3px; margin-bottom: 0;">DISCOVERY</h2>
+            <section data-background="rgba(0,0,0,0.8)"> <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
+                    <h2 style="color: white; font-size: 1.5rem; letter-spacing: 3px; margin-bottom: 10px;">DISCOVERY</h2>
                     
                     <model-viewer 
                         id="astronaut-model"
                         src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
-                        ar ar-modes="webxr scene-viewer quick-look" 
+                        ios-src="https://modelviewer.dev/shared-assets/models/Astronaut.usdz"
+                        ar 
+                        ar-modes="webxr scene-viewer quick-look" 
                         camera-controls 
                         auto-rotate 
                         shadow-intensity="1">
                         
                         <button slot="ar-button" class="ar-trigger-button">
-                            🚀 AR IN DEINEM RAUM
+                            LAUNCH AR VIEW
                         </button>
+
+                        <div id="ar-prompt">
+                            <img src="https://modelviewer.dev/shared-assets/icons/hand.png">
+                        </div>
                     </model-viewer>
 
-                    <p style="color: rgba(255,255,255,0.5); font-size: 0.8rem;">
-                        Klicke den Button, um den Astronauten in deiner Realität zu sehen.
+                    <p style="color: rgba(255,255,255,0.6); font-size: 0.8rem; margin-top: 10px;">
+                        Verwende ein AR-fähiges Smartphone.<br>Tippe auf den Button.
                     </p>
                 </div>
             </section>
@@ -163,9 +177,9 @@
 
         const grid = document.getElementById('grid');
         const dots = [];
-        let damageStage = 0;
+        let damageLevel = 0; // 0 bis 4
 
-        // Grid Init
+        // Grid Init (15x15)
         for(let i=0; i<225; i++) {
             let d = document.createElement('div');
             d.className = 'dot';
@@ -173,10 +187,15 @@
             dots.push(d);
         }
 
+        // --- GO BOARD LOGIC ---
         function renderGo() {
             grid.className = 'morph-container mode-go';
             dots.forEach(d => {
                 d.className = 'dot'; 
+                // Reset custom properties
+                d.style.removeProperty('background');
+                d.style.removeProperty('box-shadow');
+                
                 let r = Math.random();
                 if(r > 0.8) d.classList.add('black');
                 else if(r > 0.65) d.classList.add('white');
@@ -184,65 +203,167 @@
             });
         }
 
+        // --- QR CODE LOGIC ---
         function renderQR() {
             grid.className = 'morph-container mode-qr';
-            damageStage = 0;
+            damageLevel = 0;
+            
             dots.forEach((d, i) => {
-                d.className = 'dot';
-                const x = i % 15; const y = Math.floor(i / 15);
-                const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
-                const isHollow = (x===1||x===2) && (y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
-                if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) d.classList.add('active');
-                else d.classList.add('inactive');
+                d.className = 'dot'; // Reset classes
+                const x = i % 15; 
+                const y = Math.floor(i / 15);
+
+                // Definition der Finder Patterns (Die großen Quadrate)
+                // Oben Links (0-3, 0-3), Oben Rechts (11-14, 0-3), Unten Links (0-3, 11-14)
+                const inTopLeft = x < 4 && y < 4;
+                const inTopRight = x > 10 && y < 4;
+                const inBottomLeft = x < 4 && y > 10;
+                
+                const isFinderZone = inTopLeft || inTopRight || inBottomLeft;
+
+                // Innerhalb der Finder Zones, welche sind weiß (Hollow)?
+                // Zentrum ist (x,y) 1,1 oder 2,1 etc...
+                // Einfachheitshalber: Rand ist Schwarz, Mitte ist Schwarz, Ring dazwischen Weiß
+                // Hier vereinfacht für 4x4 Blöcke als Abstraktion
+                
+                if (isFinderZone) {
+                    d.classList.add('finder'); // Geschützte Klasse
+                    // Optional: Visuelles Muster für Finder
+                    d.classList.add('active'); 
+                    d.dataset.protected = "true";
+                } else {
+                    // Datenbereich
+                    d.dataset.protected = "false";
+                    if (Math.random() > 0.5) {
+                        d.classList.add('active');
+                        d.dataset.state = "on";
+                    } else {
+                        d.classList.add('inactive');
+                        d.dataset.state = "off";
+                    }
+                }
             });
+            updateText(0);
         }
 
         function renderDamage() {
-            damageStage++;
-            const percentages = [0.07, 0.15, 0.20, 0.25, 0.30, 0.35]; 
-            let target = percentages[Math.min(damageStage - 1, 5)];
-            const activeDots = dots.filter(d => d.classList.contains('active'));
-            const shuffled = activeDots.sort(() => 0.5 - Math.random());
-            for(let i = 0; i < Math.floor(activeDots.length * target); i++) {
-                if(shuffled[i]) shuffled[i].classList.add('damaged');
+            // Fehlerkorrektur-Levels simulieren: L(7%), M(15%), Q(25%), H(30-35%)
+            const levels = [0.07, 0.15, 0.25, 0.35]; 
+            
+            if (damageLevel >= levels.length) return; // Max erreicht
+            
+            const targetPercent = levels[damageLevel];
+            damageLevel++;
+
+            // Nur Dots, die "active" sind (schwarze Pixel im QR) UND nicht geschützt sind (kein Finder Pattern)
+            const vulnerableDots = dots.filter(d => 
+                d.classList.contains('active') && 
+                d.dataset.protected === "false" &&
+                !d.classList.contains('damaged')
+            );
+
+            // Wie viele Dots sind insgesamt "active" im Datenbereich?
+            const totalDataDots = dots.filter(d => d.classList.contains('active') && d.dataset.protected === "false").length;
+            
+            // Ziel: Wie viele sollen insgesamt kaputt sein?
+            const targetDamageCount = Math.floor(totalDataDots * targetPercent);
+            
+            // Wie viele sind schon kaputt?
+            const currentDamageCount = dots.filter(d => d.classList.contains('damaged')).length;
+            
+            let needed = targetDamageCount - currentDamageCount;
+
+            if (needed > 0) {
+                // Mische die verwundbaren Dots
+                const shuffled = vulnerableDots.sort(() => 0.5 - Math.random());
+                // Nimm die ersten N
+                for(let i = 0; i < needed; i++) {
+                    if(shuffled[i]) {
+                        shuffled[i].classList.add('damaged');
+                        shuffled[i].classList.remove('active'); // Visuell ersetzen
+                    }
+                }
             }
-            document.getElementById('qr-status-text').innerHTML = `> DATA_CORRUPTION: ${Math.floor(target*100)}%<br>> STATUS: ${damageStage < 6 ? 'REPAIRABLE' : 'FAILED'}`;
+
+            let status = "RECOVERABLE";
+            if (targetPercent >= 0.35) status = "CRITICAL LIMIT";
+            
+            updateText(Math.round(targetPercent * 100), status);
         }
 
         function renderHeal() {
-            damageStage = 0;
-            dots.forEach(d => d.classList.remove('damaged'));
-            document.getElementById('qr-status-text').innerHTML = `> SYSTEM_RESTORED<br>> STATUS: OK`;
+            damageLevel = 0;
+            dots.forEach(d => {
+                if(d.classList.contains('damaged')) {
+                    d.classList.remove('damaged');
+                    d.classList.add('active'); // Wiederherstellen
+                }
+            });
+            updateText(0, "SYSTEM_RESTORED");
+        }
+
+        function updateText(percent, status = "SCANNING") {
+            const el = document.getElementById('qr-status-text');
+            if(percent === 0) {
+                el.innerHTML = `> SIGNAL_LOCKED<br>> INTEGRITY: 100%`;
+            } else {
+                el.innerHTML = `> ERROR_CORRECTION: LEVEL ${damageLevel}<br>> DATA_LOSS: ${percent}%<br>> STATUS: ${status}`;
+            }
         }
 
         deck.on('slidechanged', event => {
-            if (event.indexh === 0 || event.indexh === 3) renderGo(); // Go Brett bei Slide 1 und AR
-            else if (event.indexh === 1) renderQR();
+            // Slide 0: Go
+            if (event.indexh === 0) {
+                renderGo();
+                document.getElementById('grid').style.opacity = 1;
+            }
+            // Slide 1: QR
+            else if (event.indexh === 1) {
+                renderQR();
+                document.getElementById('grid').style.opacity = 1;
+            }
+            // Slide 3 (AR): Grid ausblenden für Fokus
+            else if (event.indexh === 3) {
+                document.getElementById('grid').style.opacity = 0.1; 
+            }
+            else {
+                 document.getElementById('grid').style.opacity = 1;
+            }
         });
 
         function initApp() {
             document.getElementById('start-overlay').style.display = 'none';
             renderGo();
+            
+            // Video Vorbereitung (Mobile Safari Hack)
             const v = document.getElementById('main-video');
-            v.play().then(() => { v.pause(); v.currentTime = 0; });
+            v.play().then(() => { v.pause(); v.currentTime = 0; }).catch(e => console.log(e));
 
+            // PubNub Setup
             const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v_" + Date.now() });
+            
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
+                    
                     if(msg.slide !== undefined) {
                         deck.slide(msg.slide);
+                        // Video Overlay schließen, wenn nicht Video Slide
                         if(msg.slide !== 2) {
                             document.getElementById('video-overlay').classList.remove('active');
                             document.getElementById('main-video').pause();
                         }
                     }
+
                     if(msg.action === "damage") renderDamage();
                     if(msg.action === "heal") renderHeal();
+                    
                     if(msg.action === "play_video") {
                         document.getElementById('video-overlay').classList.add('active');
                         const vid = document.getElementById('main-video');
-                        vid.currentTime = (Date.now() - msg.timestamp) / 1000;
+                        // Sync Logic
+                        const lag = (Date.now() - msg.timestamp) / 1000;
+                        vid.currentTime = lag > 0 ? lag : 0;
                         vid.play();
                     }
                 }
