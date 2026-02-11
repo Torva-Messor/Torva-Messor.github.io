@@ -10,8 +10,11 @@
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
     <style>
-        /* Grund-Layout auf 100% setzen */
-        html, body { margin: 0; padding: 0; background-color: #000; overflow: hidden; width: 100%; height: 100%; }
+        /* Globaler Fullscreen-Reset */
+        html, body { 
+            margin: 0; padding: 0; background-color: #000; 
+            overflow: hidden; width: 100vw; height: 100vh; 
+        }
         
         #start-overlay { 
             position: fixed; inset: 0; background: #000; z-index: 10000; 
@@ -22,11 +25,11 @@
             border-radius: 50px; font-size: 22px; font-weight: bold; cursor: pointer; 
         }
 
-        /* REVEAL FULLSCREEN ÜBERSCHREIBEN */
+        /* Reveal.js Kraft-Fullscreen */
         .reveal { width: 100vw !important; height: 100vh !important; }
         .reveal .slides { 
             width: 100% !important; height: 100% !important; 
-            inset: 0 !important; transform: none !important; /* Verhindert das kleine Fenster */
+            inset: 0 !important; transform: none !important; 
         }
         
         .reveal .slides section { 
@@ -35,7 +38,7 @@
             display: flex !important; align-items: center; justify-content: center;
         }
 
-        /* CONTAINER FIX */
+        /* Medien-Container */
         .fs-container { 
             width: 100% !important; height: 100% !important; 
             position: absolute; top: 0; left: 0;
@@ -44,19 +47,30 @@
         }
         
         .fs-media { 
-            min-width: 100%; min-height: 100%;
             width: 100vw !important; height: 100vh !important;
-            object-fit: cover; /* Füllt den gesamten Screen aus */
+            object-fit: cover; /* Füllt den gesamten Screen (Android Fix) */
+            background: black;
             -webkit-transform: translateZ(0);
         }
 
-        #status { position: fixed; top: 10px; left: 10px; color: rgba(255,255,255,0.4); font-family: monospace; font-size: 10px; z-index: 9999; }
-        .ar-button { background: white; border-radius: 30px; border: none; padding: 18px 36px; position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); font-weight: bold; color: #4285f4; z-index: 1000; }
+        #status { 
+            position: fixed; top: 10px; left: 10px; color: rgba(255,255,255,0.4); 
+            font-family: monospace; font-size: 10px; z-index: 9999; pointer-events: none;
+        }
+
+        .ar-button { 
+            background: white; border-radius: 30px; border: none; padding: 18px 36px; 
+            position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); 
+            font-weight: bold; color: #4285f4; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+        }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay"><button id="start-btn" onclick="initViewer()">START</button></div>
+    <div id="start-overlay">
+        <button id="start-btn" onclick="initViewer()">START</button>
+    </div>
+    
     <div id="status">SYNC: <span id="sync-val">0</span>ms</div>
 
     <audio id="sync-audio" src="morse (2).mp3" preload="auto"></audio>
@@ -94,11 +108,11 @@
     <script src="config.js"></script>
 
     <script>
-        // Reveal mit deaktivierter Skalierung initialisieren
         const deck = new Reveal();
         deck.initialize({ 
             width: "100%", height: "100%", margin: 0, 
-            minScale: 1, maxScale: 1, disableLayout: true, // EXTREM WICHTIG FÜR ANDROID
+            minScale: 1, maxScale: 1, 
+            disableLayout: true, // Verhindert das "kleine Fenster" auf Android
             controls: false, progress: false, touch: false, transition: 'none' 
         });
         
@@ -112,10 +126,26 @@
 
         async function initViewer() {
             document.getElementById("start-overlay").style.display = 'none';
-            const unlock = async (el) => { try { el.muted = true; await el.play(); el.pause(); el.currentTime = 0; el.muted = false; } catch(e) {} };
-            await unlock(audio); await unlock(video);
+            
+            // Audio/Video Unlock für mobile Browser
+            const unlock = async (el) => { 
+                try { 
+                    el.muted = true; 
+                    await el.play(); 
+                    el.pause(); 
+                    el.currentTime = 0; 
+                    el.muted = false; 
+                } catch(e) {} 
+            };
+            await unlock(audio); 
+            await unlock(video);
 
-            const pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "u_" + Math.random().toString(36).substring(7) });
+            const pubnub = new PubNub({ 
+                subscribeKey: Pub_Nub_api_Subscribe, 
+                userId: "u_" + Math.random().toString(36).substring(7) 
+            });
+
+            // Zeitsynchronisation
             const res = await pubnub.time();
             serverTimeOffset = Math.floor(res.timetoken / 10000) - Date.now();
 
@@ -130,6 +160,7 @@
             });
             pubnub.subscribe({ channels: [My_Channel_Name] });
 
+            // Sync-Loop alle 200ms
             setInterval(() => sync(false), 200);
         }
 
@@ -138,22 +169,29 @@
             const el = (idx === 2) ? video : (idx === 1 ? audio : null);
             if (!el || !currentStartTime) return;
 
-            // Apple Buffer Ausgleich
-            const appleComp = isIOS ? 350 : 0; 
+            // Apple Latenz-Ausgleich: 400ms Vorsprung für iOS
+            const appleComp = isIOS ? 400 : 0; 
             const target = ((Date.now() + serverTimeOffset) - (currentStartTime - appleComp)) / 1000;
             const diff = target - el.currentTime;
 
-            if (force || Math.abs(diff) > 0.6) {
+            // Sprung bei Slides oder großem Lag
+            if (force || Math.abs(diff) > 0.8) {
                 el.currentTime = target;
                 el.playbackRate = 1.0;
-            } else if (Math.abs(diff) > 0.03) {
-                el.playbackRate = diff > 0 ? 1.12 : 0.88; // Etwas aggressiver für Apple
+            } 
+            // Sanfter Drift-Abgleich
+            else if (Math.abs(diff) > 0.03) {
+                // Aggressiver 15% Drift um Lücken schnell zu schließen
+                el.playbackRate = diff > 0 ? 1.15 : 0.85; 
             } else {
                 el.playbackRate = 1.0;
             }
 
             if (el.paused && target > 0 && target < el.duration) {
-                el.play().catch(() => { el.muted = true; el.play(); });
+                el.play().catch(() => { 
+                    el.muted = true; 
+                    el.play(); 
+                });
             }
             statusVal.innerText = Math.round(diff * 1000) + (isIOS ? " (iOS)" : " (Droid)");
         }
