@@ -2,35 +2,80 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Sync - Fast Start</title>
+    <title>Torva High-Performance Sync</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+
     <style>
         body { margin: 0; background-color: #000; overflow: hidden; }
-        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
-        #start-btn { padding: 20px 60px; background: #2196F3; color: white; border: none; border-radius: 50px; font-size: 22px; font-weight: bold; }
-        .fs-container { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; background: #000; }
-        .fs-media { width: 100% !important; height: 100% !important; object-fit: contain; }
+        
+        /* Start-Overlay */
+        #start-overlay { 
+            position: fixed; inset: 0; background: #000; z-index: 10000; 
+            display: flex; flex-direction: column; justify-content: center; align-items: center; 
+            color: white; font-family: sans-serif; 
+        }
+        #start-btn { 
+            padding: 20px 60px; background: #2196F3; color: white; border: none; 
+            border-radius: 50px; font-size: 22px; font-weight: bold; cursor: pointer; 
+            box-shadow: 0 0 25px rgba(33, 150, 243, 0.5); 
+        }
+
+        /* Fullscreen & Hardware Acceleration für iOS */
+        .fs-container { 
+            width: 100vw; height: 100vh; display: flex; 
+            justify-content: center; align-items: center; background: #000; 
+        }
+        
+        .fs-media { 
+            width: 100% !important; height: 100% !important; 
+            object-fit: contain; 
+            /* Fix für Apple Ruckeln */
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+            will-change: transform;
+        }
+
+        .ar-button { 
+            background: white; border-radius: 30px; border: none; 
+            position: absolute; bottom: 40px; left: 50%; transform: translateX(-50%); 
+            padding: 16px 32px; font-weight: bold; color: #4285f4; z-index: 101; 
+        }
+
         .reveal .slides section { padding: 0 !important; }
+        #status { 
+            position: fixed; top: 10px; left: 10px; color: rgba(255,255,255,0.4); 
+            font-family: monospace; font-size: 10px; z-index: 9999; 
+        }
     </style>
 </head>
 <body>
 
     <div id="start-overlay">
-        <button id="start-btn" onclick="initViewer()">START SESSION</button>
+        <button id="start-btn" onclick="initViewer()">START</button>
     </div>
+
+    <div id="status">DEV-SYNC: <span id="sync-val">INIT</span></div>
 
     <audio id="sync-audio" src="morse (2).mp3" preload="auto"></audio>
 
     <div class="reveal">
         <div class="slides">
-            <section><h1>Bereit</h1></section>
-            <section><h3>Analyse</h3><img src="IMG-20260205-WA0000.jpg" style="max-height: 50vh; border-radius: 10px;"></section>
+            <section><h1>Willkommen</h1></section>
             
+            <section>
+                <div style="padding-top: 15vh;">
+                    <h3>Analyse</h3>
+                    <img src="IMG-20260205-WA0000.jpg" style="max-height: 50vh; border-radius: 10px;">
+                </div>
+            </section>
+
             <section data-background-color="#000">
                 <div class="fs-container">
-                    <video id="sync-video" class="fs-media" playsinline preload="auto" muted>
+                    <video id="sync-video" class="fs-media" playsinline preload="auto">
                         <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
                     </video>
                 </div>
@@ -38,7 +83,9 @@
 
             <section data-background-color="#000">
                 <div class="fs-container">
-                    <model-viewer class="fs-media" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer" camera-controls auto-rotate></model-viewer>
+                    <model-viewer class="fs-media" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer" camera-controls auto-rotate interaction-prompt="none">
+                        <button slot="ar-button" class="ar-button">📷 AR STARTEN</button>
+                    </model-viewer>
                 </div>
             </section>
         </div>
@@ -54,16 +101,20 @@
         
         const audio = document.getElementById("sync-audio");
         const video = document.getElementById("sync-video");
+        const syncLabel = document.getElementById("sync-val");
+
         let serverTimeOffset = 0;
         let currentStartTime = 0;
-        let lastMsgIndex = -1;
+        let lastIdx = -1;
+
+        // Geräte-Erkennung
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
         async function initViewer() {
             document.getElementById("start-overlay").style.display = 'none';
-            // "Warm-up" für die Hardware
             try { 
                 audio.play(); audio.pause(); 
-                video.play(); video.pause(); video.muted = false;
+                video.play(); video.pause(); 
             } catch(e) {}
 
             const pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "u_" + Math.random().toString(36).substring(7) });
@@ -74,45 +125,45 @@
 
             pubnub.addListener({
                 message: (m) => {
-                    const isNewSlide = m.message.index !== lastMsgIndex;
-                    if (m.message.index !== undefined) deck.slide(m.message.index);
-                    currentStartTime = m.message.startTime;
-                    lastMsgIndex = m.message.index;
-
-                    // Wenn wir auf das Video wechseln (Index 2), sofort hart synchronisieren
-                    if (isNewSlide) {
-                        syncAll(true); 
+                    const msg = m.message;
+                    if (msg.index !== undefined) {
+                        const isNew = msg.index !== lastIdx;
+                        deck.slide(msg.index);
+                        currentStartTime = msg.startTime;
+                        lastIdx = msg.index;
+                        if (isNew) syncAll(true);
                     }
                 }
             });
             pubnub.subscribe({ channels: [My_Channel_Name] });
 
-            // Schnellerer Intervall (250ms statt 500ms) für die erste Einpendelung
-            setInterval(() => syncAll(false), 250);
+            // Intervall: Samsung verträgt 250ms, iOS beruhigt sich bei 500ms besser
+            setInterval(() => syncAll(false), isIOS ? 500 : 250);
         }
 
-        function syncAll(forceHard) {
+        function syncAll(force) {
             const idx = deck.getState().indexh;
-            if (idx === 1) manageSync(audio, forceHard);
-            else if (idx === 2) manageSync(video, forceHard);
+            if (idx === 1) { video.pause(); manageSync(audio, force); }
+            else if (idx === 2) { audio.pause(); manageSync(video, force); }
             else { audio.pause(); video.pause(); }
         }
 
-        function manageSync(el, forceHard) {
+        function manageSync(el, force) {
             if (!currentStartTime) return;
             const target = ((Date.now() + serverTimeOffset) - currentStartTime) / 1000;
             const diff = target - el.currentTime;
 
-            // Beschleunigte Logik:
-            // 1. Wenn Differenz > 0.5s ODER forceHard: Sofort springen
-            if (forceHard || Math.abs(diff) > 0.5) {
+            // Strategie-Anpassung
+            const jumpLimit = isIOS ? 1.0 : 0.4;   // iOS springt seltener
+            const driftLimit = isIOS ? 0.15 : 0.03; // iOS ignoriert Mikro-Abweichungen
+            const driftSpeed = isIOS ? 1.06 : 1.12; // iOS ändert Speed nur um 6% statt 12%
+
+            if (force || Math.abs(diff) > jumpLimit) {
                 el.currentTime = target;
                 el.playbackRate = 1.0;
             } 
-            // 2. Wenn Differenz klein (0.03s - 0.5s): Geschwindigkeit anpassen
-            else if (Math.abs(diff) > 0.03) {
-                // Aggressiverer Smooth-Sync (15% statt 8% Änderung)
-                el.playbackRate = diff > 0 ? 1.15 : 0.85;
+            else if (Math.abs(diff) > driftLimit) {
+                el.playbackRate = diff > 0 ? driftSpeed : (2 - driftSpeed);
             } 
             else {
                 el.playbackRate = 1.0;
@@ -121,6 +172,8 @@
             if (el.paused && target > 0 && target < el.duration) {
                 el.play().catch(() => { el.muted = true; el.play(); });
             }
+            
+            syncLabel.innerText = isIOS ? "iOS-Mode (" + Math.round(diff*1000) + "ms)" : "Std-Mode (" + Math.round(diff*1000) + "ms)";
         }
     </script>
 </body>
