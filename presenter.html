@@ -6,35 +6,11 @@
     <title>Torva Presenter</title>
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
     <style>
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background: #111; 
-            color: #fff; 
-            display: flex; 
-            flex-direction: column; 
-            align-items: center; 
-            padding: 20px; 
-            margin: 0;
-        }
-        h1 { color: #00f2ff; font-size: 1.5rem; margin-bottom: 30px; }
-        .button-grid { 
-            display: grid; 
-            grid-template-columns: 1fr 1fr; 
-            gap: 15px; 
-            width: 100%; 
-            max-width: 400px;
-        }
-        button { 
-            background: #222; 
-            border: 1px solid #444; 
-            color: white; 
-            padding: 20px; 
-            border-radius: 10px; 
-            font-size: 1rem; 
-            cursor: pointer; 
-            transition: all 0.2s; 
-        }
-        button:active { transform: scale(0.95); }
+        body { font-family: 'Inter', sans-serif; background: #111; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        h1 { color: #00f2ff; font-size: 1.5rem; margin-bottom: 30px; text-align: center; }
+        .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 400px; }
+        button { background: #222; border: 1px solid #444; color: white; padding: 20px; border-radius: 10px; font-size: 1rem; cursor: pointer; transition: all 0.2s; }
+        button:active { transform: scale(0.95); background: #333; }
         .btn-action { border-color: #00f2ff; color: #00f2ff; }
         .btn-video { border-color: #fff; }
         .btn-damage { border-color: #ff0055; color: #ff0055; }
@@ -44,52 +20,49 @@
 </head>
 <body>
 
-    <h1>TORVA CONTROLLER</h1>
+    <h1 id="status">TORVA CONTROLLER</h1>
 
     <div class="button-grid">
         <button class="btn-action" onclick="sendCommand(0, 'morph_go')">GO Brett</button>
         <button class="btn-action" onclick="sendCommand(0, 'morph_qr')">QR Code</button>
-        
         <button class="btn-damage" onclick="sendCommand(null, 'damage')">Damage</button>
         <button class="btn-heal" onclick="sendCommand(null, 'heal')">Heal</button>
-
         <button class="btn-video full-width" onclick="sendCommand(2, 'play_video')">🎥 Play Video</button>
         <button class="btn-video full-width" onclick="sendCommand(3, null)">🤖 AR Object</button>
     </div>
 
     <script>
-        // --- KONFIGURATION ---
-        // HIER MÜSSEN DIE GLEICHEN KEYS WIE IM VIEWER REIN
-        const publishKey = 'DEIN_PUBLISH_KEY'; 
-        const subscribeKey = 'DEIN_SUBSCRIBE_KEY';
-        const channelName = 'torva_channel';
+        // PRESENTER KONFIGURATION
+        const publishKey = 'pub-c-f5b11d3c-ddfe-4dfc-963e-6fae738aeb03'; 
+        const subscribeKey = 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7';
+        const channelName = 'PrasiW.Woche';
 
-        // PubNub Initialisierung
         const pubnub = new PubNub({
             publishKey: publishKey,
             subscribeKey: subscribeKey,
             userId: "presenter_mobile"
         });
 
-        // Funktion zum Senden von Befehlen
         function sendCommand(slideIndex, actionName) {
             const payload = {};
+            if (slideIndex !== null) payload.slide = slideIndex;
+            if (actionName !== null) payload.action = actionName;
             
-            // Nur slide senden, wenn angegeben
-            if (slideIndex !== null) {
-                payload.slide = slideIndex;
-            }
-            
-            // Nur action senden, wenn angegeben
-            if (actionName !== null) {
-                payload.action = actionName;
-            }
-            
+            const statusEl = document.getElementById('status');
+            statusEl.innerText = "Sending...";
+
             pubnub.publish({
                 channel: channelName,
                 message: payload
+            }, (status) => {
+                if (status.error) {
+                    statusEl.innerText = "ERROR!";
+                    console.error(status);
+                } else {
+                    statusEl.innerText = "SENT OK";
+                    setTimeout(() => { statusEl.innerText = "TORVA CONTROLLER"; }, 800);
+                }
             });
-            console.log("Gesendet:", payload);
         }
     </script>
 </body>
