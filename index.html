@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Chrome-iOS Sync</title>
+    <title>Torva Smooth-Sync Final</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
@@ -10,25 +10,71 @@
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
     <style>
-        html, body { margin: 0; padding: 0; background-color: #000; overflow: hidden; width: 100vw; height: 100vh; }
-        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
-        #start-btn { padding: 22px 60px; background: #2196F3; color: white; border: none; border-radius: 50px; font-size: 22px; font-weight: bold; cursor: pointer; }
+        /* Globaler Reset für Fullscreen */
+        html, body { 
+            margin: 0; padding: 0; background-color: #000; 
+            overflow: hidden; width: 100vw; height: 100vh; 
+        }
         
-        /* Fullscreen Fix */
+        /* Start-Overlay */
+        #start-overlay { 
+            position: fixed; inset: 0; background: #000; z-index: 10000; 
+            display: flex; justify-content: center; align-items: center; 
+        }
+        #start-btn { 
+            padding: 22px 60px; background: #2196F3; color: white; border: none; 
+            border-radius: 50px; font-size: 22px; font-weight: bold; cursor: pointer; 
+            box-shadow: 0 0 20px rgba(33, 150, 243, 0.4);
+        }
+
+        /* Reveal.js Layout-Zwang deaktivieren (Android Fix) */
         .reveal { width: 100vw !important; height: 100vh !important; }
-        .reveal .slides { width: 100% !important; height: 100% !important; inset: 0 !important; transform: none !important; }
-        .reveal .slides section { width: 100% !important; height: 100% !important; top: 0 !important; left: 0 !important; padding: 0 !important; display: flex !important; align-items: center; justify-content: center; }
+        .reveal .slides { 
+            width: 100% !important; height: 100% !important; 
+            inset: 0 !important; transform: none !important; 
+        }
         
-        .fs-container { width: 100% !important; height: 100% !important; position: absolute; top: 0; left: 0; display: flex; justify-content: center; align-items: center; background: #000; overflow: hidden; }
-        .fs-media { width: 100vw !important; height: 100vh !important; object-fit: cover; background: black; -webkit-transform: translateZ(0); }
+        .reveal .slides section { 
+            width: 100% !important; height: 100% !important; 
+            top: 0 !important; left: 0 !important; padding: 0 !important;
+            display: flex !important; align-items: center; justify-content: center;
+        }
+
+        /* Container & Media */
+        .fs-container { 
+            width: 100% !important; height: 100% !important; 
+            position: absolute; top: 0; left: 0;
+            display: flex; justify-content: center; align-items: center; 
+            background: #000; overflow: hidden;
+        }
         
-        #status { position: fixed; top: 10px; left: 10px; color: rgba(255,255,255,0.4); font-family: monospace; font-size: 10px; z-index: 9999; pointer-events: none; }
-        .ar-button { background: white; border-radius: 30px; border: none; padding: 18px 36px; position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); font-weight: bold; color: #4285f4; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        .fs-media { 
+            width: 100vw !important; height: 100vh !important;
+            object-fit: cover; 
+            background: black;
+            /* Erzwingt GPU-Rendering für flüssigere Bewegung */
+            -webkit-transform: translateZ(0);
+            transform: translateZ(0);
+        }
+
+        #status { 
+            position: fixed; top: 10px; left: 10px; color: rgba(255,255,255,0.4); 
+            font-family: monospace; font-size: 10px; z-index: 9999; pointer-events: none; 
+        }
+
+        .ar-button { 
+            background: white; border-radius: 30px; border: none; padding: 18px 36px; 
+            position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); 
+            font-weight: bold; color: #4285f4; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
+        }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay"><button id="start-btn" onclick="initViewer()">START</button></div>
+    <div id="start-overlay">
+        <button id="start-btn" onclick="initViewer()">START</button>
+    </div>
+    
     <div id="status">SYNC: <span id="sync-val">0</span>ms</div>
 
     <audio id="sync-audio" src="morse (2).mp3" preload="auto"></audio>
@@ -36,7 +82,13 @@
     <div class="reveal">
         <div class="slides">
             <section><h1>Ready</h1></section>
-            <section><div class="fs-container"><img src="IMG-20260205-WA0000.jpg" style="width: 100%; height: 100%; object-fit: contain;"></div></section>
+            
+            <section>
+                <div class="fs-container">
+                    <img src="IMG-20260205-WA0000.jpg" style="width: 100%; height: 100%; object-fit: contain;">
+                </div>
+            </section>
+            
             <section data-background-color="#000">
                 <div class="fs-container">
                     <video id="sync-video" class="fs-media" playsinline webkit-playsinline preload="auto">
@@ -44,6 +96,7 @@
                     </video>
                 </div>
             </section>
+
             <section data-background-color="#000">
                 <div class="fs-container">
                     <model-viewer id="ar-element" class="fs-media" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer quick-look" camera-controls interaction-prompt="none">
@@ -60,7 +113,12 @@
 
     <script>
         const deck = new Reveal();
-        deck.initialize({ width: "100%", height: "100%", margin: 0, minScale: 1, maxScale: 1, disableLayout: true, controls: false, progress: false, touch: false, transition: 'none' });
+        deck.initialize({ 
+            width: "100%", height: "100%", margin: 0, 
+            minScale: 1, maxScale: 1, 
+            disableLayout: true, 
+            controls: false, progress: false, touch: false, transition: 'none' 
+        });
         
         const audio = document.getElementById("sync-audio");
         const video = document.getElementById("sync-video");
@@ -72,10 +130,24 @@
 
         async function initViewer() {
             document.getElementById("start-overlay").style.display = 'none';
-            const unlock = async (el) => { try { el.muted = true; await el.play(); el.pause(); el.currentTime = 0; el.muted = false; } catch(e) {} };
-            await unlock(audio); await unlock(video);
+            
+            const unlock = async (el) => { 
+                try { 
+                    el.muted = true; 
+                    await el.play(); 
+                    el.pause(); 
+                    el.currentTime = 0; 
+                    el.muted = false; 
+                } catch(e) {} 
+            };
+            await unlock(audio); 
+            await unlock(video);
 
-            const pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "u_" + Math.random().toString(36).substring(7) });
+            const pubnub = new PubNub({ 
+                subscribeKey: Pub_Nub_api_Subscribe, 
+                userId: "u_" + Math.random().toString(36).substring(7) 
+            });
+
             const res = await pubnub.time();
             serverTimeOffset = Math.floor(res.timetoken / 10000) - Date.now();
 
@@ -90,7 +162,7 @@
             });
             pubnub.subscribe({ channels: [My_Channel_Name] });
 
-            // Langsames Intervall (1 Sekunde) für maximale Laufruhe auf Apple
+            // 1000ms Intervall schont die iOS CPU und verhindert Ruckeln
             setInterval(() => sync(false), 1000);
         }
 
@@ -99,26 +171,29 @@
             const el = (idx === 2) ? video : (idx === 1 ? audio : null);
             if (!el || !currentStartTime) return;
 
+            // Apple Latenz-Ausgleich (Vorsprung)
             const appleComp = isIOS ? 400 : 0; 
             const target = ((Date.now() + serverTimeOffset) - (currentStartTime - appleComp)) / 1000;
             const diff = target - el.currentTime;
 
-            // 1. HARD SYNC: Nur bei Slide-Wechsel oder > 1.5s Lag
+            // 1. HARD SYNC (Nur bei Slide-Wechsel oder > 1.5s Lag)
             if (force || Math.abs(diff) > 1.5) {
                 el.currentTime = target;
                 el.playbackRate = 1.0;
             } 
-            // 2. ULTRA-MINIMALER DRIFT (Kein Stottern möglich)
-            // Wir erlauben eine Abweichung von 100ms ohne einzugreifen.
+            // 2. ULTRA-SMOOTH DRIFT (Max 2% Änderung für iOS-Stabilität)
+            // Wir lassen das Video in Ruhe, wenn es innerhalb von 100ms liegt
             else if (Math.abs(diff) > 0.1) {
-                // Nur 1% bis 2% Änderung – das "hört" Webkit nicht und ruckelt nicht.
                 el.playbackRate = diff > 0 ? 1.02 : 0.98; 
             } else {
                 el.playbackRate = 1.0;
             }
 
             if (el.paused && target > 0 && target < el.duration) {
-                el.play().catch(() => { el.muted = true; el.play(); });
+                el.play().catch(() => { 
+                    el.muted = true; 
+                    el.play(); 
+                });
             }
             statusVal.innerText = Math.round(diff * 1000) + "ms";
         }
