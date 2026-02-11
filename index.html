@@ -12,10 +12,10 @@
         :root { 
             --accent: #00f2ff; 
             --damage: #ff0000;
-            --heal: #00ff88;
             --bg: #050505; 
             --board-bg: #2b2b2b;
             --matrix-green: #0f0;
+            --ar-slide-bg: #1a1a1a; /* Grauer Hintergrund für AR Slide */
         }
         body { background: var(--bg); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
 
@@ -26,7 +26,7 @@
             display: flex; justify-content: center; align-items: center;
             z-index: 1; 
             pointer-events: none;
-            transition: opacity 0.5s ease; /* Weicher Übergang beim Ausblenden */
+            transition: opacity 0.5s ease;
         }
 
         .morph-container {
@@ -35,11 +35,9 @@
             grid-template-rows: repeat(15, 1fr);
             gap: 6px;
             width: 55vmin; height: 55vmin;
-            transition: all 1s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
         .dot { width: 100%; height: 100%; transition: background 0.3s, transform 0.8s; }
 
-        /* Modi */
         .mode-go { background: var(--board-bg); gap: 2px; transform: scale(0.9); border: 1px solid #444; border-radius: 4px; padding: 10px; }
         .mode-go .dot { border-radius: 50%; transform: scale(0.95); }
         .mode-go .dot.white { background: radial-gradient(circle at 35% 35%, #fff, #d0d0d0); }
@@ -52,16 +50,21 @@
         .mode-qr .dot.inactive { background: rgba(255,255,255,0.05); transform: scale(0.2); }
         .mode-qr .dot.damaged { background: var(--damage) !important; box-shadow: 0 0 15px var(--damage); }
 
-        /* --- VIDEO --- */
-        #video-overlay { position: fixed; inset: 0; background: #000; z-index: 5000; display: flex; opacity: 0; pointer-events: none; transition: 0.5s; }
-        #video-overlay.active { opacity: 1; pointer-events: all; }
-        video { width: 100%; height: 100%; object-fit: contain; }
+        /* --- AR SLIDE SPEZIFISCH --- */
+        .ar-section {
+            background-color: var(--ar-slide-bg) !important;
+            height: 100vh !important;
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+        }
 
-        /* --- AR STYLING --- */
         model-viewer {
             width: 100%;
-            height: 60vh;
+            height: 70vh;
             --poster-color: transparent;
+            z-index: 10;
         }
         
         .ar-trigger-button {
@@ -69,43 +72,29 @@
             color: black;
             border: none;
             padding: 15px 30px;
-            font-family: 'Inter', sans-serif;
             font-weight: bold;
             border-radius: 50px;
-            font-size: 1.1rem;
             cursor: pointer;
             box-shadow: 0 0 20px var(--accent);
             text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-top: 20px;
             animation: pulse 2s infinite;
         }
 
         @keyframes pulse {
-            0% { transform: scale(1); box-shadow: 0 0 10px var(--accent); }
-            50% { transform: scale(1.05); box-shadow: 0 0 25px var(--accent); }
-            100% { transform: scale(1); box-shadow: 0 0 10px var(--accent); }
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
         }
 
-        /* --- UI & TEXT --- */
         #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
         #btn-start { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 20px 50px; font-size: 1.2rem; border-radius: 50px; cursor: pointer; }
-
         .matrix-text { color: var(--matrix-green); font-size: 0.9rem; margin-top: 55vh; background: rgba(0,0,0,0.7); padding: 10px; display: inline-block; }
-        
         .reveal { z-index: 2; }
-        .reveal .slides section { background: transparent !important; }
     </style>
 </head>
 <body>
 
     <div id="start-overlay"><button id="btn-start" onclick="initApp()">Initialize System</button></div>
-
-    <div id="video-overlay">
-        <video id="main-video" playsinline webkit-playsinline preload="auto">
-            <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
-        </video>
-    </div>
 
     <div id="background-layer">
         <div id="grid" class="morph-container mode-go"></div>
@@ -113,43 +102,20 @@
 
     <div class="reveal">
         <div class="slides">
-            
-            <section>
-                <h3 style="margin-bottom: 55vh; opacity: 0.7; letter-spacing: 4px;">ORIGIN</h3>
-            </section>
+            <section><h3>ORIGIN</h3></section>
+            <section><div class="matrix-text" id="qr-status-text">> MATRIX_READY</div></section>
+            <section data-background="#000"><h3>VIDEO TRANSMISSION</h3></section>
 
-            <section>
-                <div class="matrix-text" id="qr-status-text">
-                    > DECODING_SIGNAL...<br>
-                    > MATRIX_READY
-                </div>
-            </section>
-
-            <section data-background="#000">
-                <h3 style="opacity: 0.5;">VIDEO TRANSMISSION</h3>
-            </section>
-
-            <section>
-                <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh;">
-                    <h2 style="color: white; font-size: 1.5rem; letter-spacing: 3px; margin-bottom: 0;">DISCOVERY</h2>
-                    
-                    <model-viewer 
-                        id="astronaut-model"
-                        src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
-                        ar ar-modes="webxr scene-viewer quick-look" 
-                        camera-controls 
-                        auto-rotate 
-                        shadow-intensity="1">
-                        
-                        <button slot="ar-button" class="ar-trigger-button">
-                            🚀 AR IN DEINEM RAUM
-                        </button>
-                    </model-viewer>
-
-                    <p style="color: rgba(255,255,255,0.5); font-size: 0.8rem;">
-                        Klicke den Button, um den Astronauten in deiner Realität zu sehen.
-                    </p>
-                </div>
+            <section class="ar-section">
+                <h2 style="color: white; letter-spacing: 3px;">DISCOVERY</h2>
+                <model-viewer 
+                    id="astronaut-model"
+                    src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
+                    ar ar-modes="webxr scene-viewer quick-look" 
+                    camera-controls auto-rotate shadow-intensity="1">
+                    <button slot="ar-button" class="ar-trigger-button">🚀 AR IN DEINEM RAUM</button>
+                </model-viewer>
+                <p style="color: rgba(255,255,255,0.5); font-size: 0.8rem;">Modell wird im Raum platziert</p>
             </section>
         </div>
     </div>
@@ -166,12 +132,21 @@
         const dots = [];
         let damageStage = 0;
 
-        // Grid Init
         for(let i=0; i<225; i++) {
             let d = document.createElement('div');
             d.className = 'dot';
             grid.appendChild(d);
             dots.push(d);
+        }
+
+        // PRÄZISE PRÜFUNG: Schützt Finder Patterns (7x7 Ecken) und Version Info
+        function isProtectedZone(x, y) {
+            if (x < 7 && y < 7) return true;   // Oben Links
+            if (x > 7 && y < 7) return true;   // Oben Rechts
+            if (x < 7 && y > 7) return true;   // Unten Links
+            // Versions- / Formatinfos liegen oft an den Rändern der Finder Patterns
+            if ((x === 8 && y < 7) || (x < 7 && y === 8)) return true; 
+            return false;
         }
 
         function renderGo() {
@@ -185,35 +160,16 @@
             });
         }
 
-        // Hilfsfunktion, um zu prüfen, ob ein Punkt in einer kritischen QR-Zone liegt
-        function isSafeZone(x, y) {
-            // Finder Patterns sind 7x7 Bereiche in den Ecken (bei einem 15x15 Grid)
-            // Oben-Links
-            if (x < 7 && y < 7) return true;
-            // Oben-Rechts
-            if (x > 7 && y < 7) return true;
-            // Unten-Links
-            if (x < 7 && y > 7) return true;
-            
-            return false;
-        }
-
         function renderQR() {
             grid.className = 'morph-container mode-qr';
             damageStage = 0;
             dots.forEach((d, i) => {
                 d.className = 'dot';
                 const x = i % 15; const y = Math.floor(i / 15);
-                
-                // Deine ursprüngliche Logik für das QR-Muster
                 const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
                 const isHollow = (x===1||x===2) && (y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
-                
-                if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) {
-                    d.classList.add('active');
-                } else {
-                    d.classList.add('inactive');
-                }
+                if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) d.classList.add('active');
+                else d.classList.add('inactive');
             });
         }
 
@@ -222,38 +178,27 @@
             const percentages = [0.07, 0.15, 0.20, 0.25, 0.30, 0.35]; 
             let target = percentages[Math.min(damageStage - 1, 5)];
             
-            // Filtere nur die Dots, die aktiv sind UND NICHT in einer sicheren Zone liegen
             const damageableDots = dots.filter((d, i) => {
-                const x = i % 15;
-                const y = Math.floor(i / 15);
-                return d.classList.contains('active') && !isSafeZone(x, y);
+                const x = i % 15; const y = Math.floor(i / 15);
+                return d.classList.contains('active') && !isProtectedZone(x, y);
             });
 
             const shuffled = damageableDots.sort(() => 0.5 - Math.random());
+            let count = Math.floor(damageableDots.length * target);
             
-            // Berechne die Anzahl der zu beschädigenden Dots basierend auf den verfügbaren, nicht-kritischen Dots
-            let dotsToDamageCount = Math.floor(damageableDots.length * target);
-            
-            for(let i = 0; i < dotsToDamageCount; i++) {
+            for(let i = 0; i < count; i++) {
                 if(shuffled[i]) shuffled[i].classList.add('damaged');
             }
-            document.getElementById('qr-status-text').innerHTML = `> DATA_CORRUPTION: ${Math.floor(target*100)}%<br>> STATUS: ${damageStage < 6 ? 'REPAIRABLE' : 'FAILED'}`;
-        }
-
-        function renderHeal() {
-            damageStage = 0;
-            dots.forEach(d => d.classList.remove('damaged'));
-            document.getElementById('qr-status-text').innerHTML = `> SYSTEM_RESTORED<br>> STATUS: OK`;
+            document.getElementById('qr-status-text').innerHTML = `> CORRUPTION: ${Math.floor(target*100)}%<br>> CRITICAL_ZONES: SECURED`;
         }
 
         deck.on('slidechanged', event => {
-            // Index 3 ist die Astronauten-Slide. Hier blenden wir den Hintergrund aus.
             if (event.indexh === 3) {
-                backgroundLayer.style.opacity = 0;
+                // EXTREM WICHTIG: Komplett entfernen für AR Slide
+                backgroundLayer.style.display = 'none'; 
             } else {
-                // Auf allen anderen Slides zeigen wir den Hintergrund wieder an.
+                backgroundLayer.style.display = 'flex';
                 backgroundLayer.style.opacity = 1;
-                
                 if (event.indexh === 0) renderGo();
                 else if (event.indexh === 1) renderQR();
             }
@@ -262,28 +207,13 @@
         function initApp() {
             document.getElementById('start-overlay').style.display = 'none';
             renderGo();
-            const v = document.getElementById('main-video');
-            v.play().then(() => { v.pause(); v.currentTime = 0; });
-
             const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v_" + Date.now() });
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
-                    if(msg.slide !== undefined) {
-                        deck.slide(msg.slide);
-                        if(msg.slide !== 2) {
-                            document.getElementById('video-overlay').classList.remove('active');
-                            document.getElementById('main-video').pause();
-                        }
-                    }
+                    if(msg.slide !== undefined) deck.slide(msg.slide);
                     if(msg.action === "damage") renderDamage();
-                    if(msg.action === "heal") renderHeal();
-                    if(msg.action === "play_video") {
-                        document.getElementById('video-overlay').classList.add('active');
-                        const vid = document.getElementById('main-video');
-                        vid.currentTime = (Date.now() - msg.timestamp) / 1000;
-                        vid.play();
-                    }
+                    if(msg.action === "heal") dots.forEach(d => d.classList.remove('damaged'));
                 }
             });
             pubnub.subscribe({ channels: ['PrasiW.Woche'] });
