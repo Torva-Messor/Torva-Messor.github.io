@@ -2,93 +2,76 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Presenter Control</title>
+    <title>Hybrid Presenter</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
-    <style>
-        .status-box { padding: 20px; background: #eee; border: 2px solid #333; margin-top: 20px; }
-        .current-action { font-weight: bold; color: blue; font-size: 1.5em; }
-    </style>
+    <style>.status { padding: 10px; background: #eee; border: 1px solid #999; font-family: monospace; }</style>
 </head>
 <body>
     <div class="reveal">
         <div class="slides">
-            
             <section>
-                <h3>1. BOARD / QR</h3>
-                <p>Initial: GO BOARD</p>
-                <p class="fragment" data-action="qr">Klick -> MORPH TO QR</p>
-                <div class="status-box">Status: <span id="log">Waiting...</span></div>
+                <h3>1. BOARD</h3>
+                <p>Status: <span id="p-status">Init...</span></p>
+                <p class="fragment" data-action="qr">MORPH TO QR</p>
             </section>
-
             <section>
-                <h3>2. INFO SLIDE</h3>
-                <p>Zeige Text.</p>
-                <p class="fragment" data-action="info">Klick -> Highlight</p>
+                <h3>2. VIDEO START</h3>
+                <p>Startet Sync auf allen Geräten.</p>
             </section>
-
             <section>
-                <h3>3. VIDEO TRIGGER</h3>
-                <p>Wenn diese Slide aktiv ist, startet das Video beim Viewer sofort.</p>
+                <h3>3. AR</h3>
             </section>
-
-             <section>
-                <h3>4. AR MODELL</h3>
-                <p>Model Viewer aktiv.</p>
-            </section>
-
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
     <script src="config.js"></script>
-
     <script>
         const deck = new Reveal();
         deck.initialize({ controls: true, progress: true, hash: true });
 
-        const pubnub = new PubNub({
-            publishKey: Pub_Nub_api_Publish,
-            subscribeKey: Pub_Nub_api_Subscribe,
-            userId: "presenter"
+        const pubnub = new PubNub({ publishKey: Pub_Nub_api_Publish, subscribeKey: Pub_Nub_api_Subscribe, userId: "presenter" });
+        
+        let serverOffset = 0;
+
+        // Zeit einmalig beim Start holen
+        pubnub.time().then((res) => {
+            serverOffset = Math.floor(res.timetoken / 10000) - Date.now();
+            document.getElementById('p-status').innerText = "Ready. Offset: " + serverOffset;
         });
 
-        function sync() {
-            const idx = deck.getIndices(); // Holt { h: 0, v: 0, f: undefined/0/1 }
-            let action = "go"; // Standard State
-            
-            // Logik-Mapping: Welche Slide/Fragment bedeutet was?
-            if (idx.h === 0) {
-                // Wenn Fragment 0 sichtbar ist -> QR, sonst GO
-                action = (idx.f >= 0) ? "qr" : "go";
-            } 
-            else if (idx.h === 2) {
-                action = "video";
+        function broadcast() {
+            const idx = deck.getIndices();
+            let action = "go";
+            let startTime = 0;
+
+            // Logik-Mapping
+            if(idx.h === 0) {
+                action = (idx.f !== undefined && idx.f >= 0) ? "qr" : "go";
             }
+            if(idx.h === 1) {
+                action = "video";
+                // WICHTIG: Wir senden den Zeitpunkt "JETZT" als Startzeitpunkt
+                // Die Viewer rechnen dann: (Ihre Zeit - Startzeit) = Video Position
+                startTime = Date.now() + serverOffset; 
+            }
+            if(idx.h === 2) action = "ar";
 
-            document.getElementById('log').innerText = `Slide: ${idx.h} | Action: ${action}`;
-
-            // Sende ALLES an den Viewer
             pubnub.publish({
                 channel: My_Channel_Name,
                 message: {
-                    indexh: idx.h,
-                    indexv: idx.v,
-                    action: action
+                    slideIndex: idx.h,
+                    action: action,
+                    startTime: startTime // Nur relevant für Video
                 }
             });
         }
 
-        // BINDING: Das ist der Schlüssel zum Erfolg!
-        // Wir hören auf ALLE Events, auch Rückwärts.
-        deck.on('slidechanged', sync);
-        deck.on('fragmentshown', sync);
-        deck.on('fragmenthidden', sync); // Das fehlte vorher für den "Back" Button
-        
-        // Initialer Sync
-        setTimeout(sync, 1000);
-
+        deck.on('slidechanged', broadcast);
+        deck.on('fragmentshown', broadcast);
+        deck.on('fragmenthidden', broadcast);
     </script>
 </body>
 </html>
