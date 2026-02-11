@@ -11,8 +11,9 @@
         .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 400px; }
         button { background: #222; border: 1px solid #444; color: white; padding: 20px; border-radius: 10px; font-size: 1rem; cursor: pointer; transition: all 0.2s; }
         button:active { transform: scale(0.95); background: #333; }
+        
         .btn-action { border-color: #00f2ff; color: #00f2ff; }
-        .btn-video { border-color: #fff; }
+        .btn-video { border-color: #fff; background: #333; } /* Video Button etwas hervorgehoben */
         .btn-damage { border-color: #ff0055; color: #ff0055; }
         .btn-heal { border-color: #00ff88; color: #00ff88; }
         .full-width { grid-column: span 2; }
@@ -23,16 +24,18 @@
     <h1 id="status">TORVA CONTROLLER</h1>
 
     <div class="button-grid">
-        <button class="btn-action" onclick="sendCommand(0, 'morph_go')">GO Brett</button>
+        <button class="btn-action" onclick="sendCommand(0, 'morph_go')">⬅️ GO Brett (Reset)</button>
         <button class="btn-action" onclick="sendCommand(0, 'morph_qr')">QR Code</button>
+        
         <button class="btn-damage" onclick="sendCommand(null, 'damage')">Damage</button>
         <button class="btn-heal" onclick="sendCommand(null, 'heal')">Heal</button>
+        
         <button class="btn-video full-width" onclick="sendCommand(2, 'play_video')">🎥 Play Video</button>
         <button class="btn-video full-width" onclick="sendCommand(3, null)">🤖 AR Object</button>
     </div>
 
     <script>
-        // PRESENTER KONFIGURATION
+        // DEINE KEYS
         const publishKey = 'pub-c-f5b11d3c-ddfe-4dfc-963e-6fae738aeb03'; 
         const subscribeKey = 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7';
         const channelName = 'PrasiW.Woche';
@@ -45,22 +48,23 @@
 
         function sendCommand(slideIndex, actionName) {
             const payload = {};
+            // Wenn slide 0 ist, sende 0. Wenn null, sende nichts.
             if (slideIndex !== null) payload.slide = slideIndex;
             if (actionName !== null) payload.action = actionName;
             
             const statusEl = document.getElementById('status');
-            statusEl.innerText = "Sending...";
+            statusEl.innerText = "Sende...";
 
             pubnub.publish({
                 channel: channelName,
                 message: payload
             }, (status) => {
                 if (status.error) {
-                    statusEl.innerText = "ERROR!";
+                    statusEl.innerText = "FEHLER!";
                     console.error(status);
                 } else {
-                    statusEl.innerText = "SENT OK";
-                    setTimeout(() => { statusEl.innerText = "TORVA CONTROLLER"; }, 800);
+                    statusEl.innerText = "OK";
+                    setTimeout(() => { statusEl.innerText = "TORVA CONTROLLER"; }, 500);
                 }
             });
         }
