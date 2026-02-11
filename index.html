@@ -2,43 +2,77 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva High-Performance Fix</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Torva Final Sync</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
     <style>
-        body { margin: 0; background-color: #000; overflow: hidden; }
-        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
-        #start-btn { padding: 20px 60px; background: #2196F3; color: white; border: none; border-radius: 50px; font-size: 22px; cursor: pointer; }
-        .fs-container { width: 100vw; height: 100vh; display: flex; justify-content: center; align-items: center; }
+        body { margin: 0; background-color: #000; overflow: hidden; width: 100vw; height: 100vh; }
+        
+        #start-overlay { 
+            position: fixed; inset: 0; background: #000; z-index: 10000; 
+            display: flex; justify-content: center; align-items: center; 
+        }
+        #start-btn { 
+            padding: 25px 70px; background: #2196F3; color: white; border: none; 
+            border-radius: 50px; font-size: 24px; font-weight: bold; cursor: pointer; 
+        }
+
+        /* Fullscreen Fix */
+        .reveal, .slides, .fs-container { 
+            width: 100vw !important; height: 100vh !important; 
+        }
+
+        .fs-container { 
+            display: flex; justify-content: center; align-items: center; background: #000; 
+        }
+        
         .fs-media { 
-            width: 100% !important; height: 100% !important; object-fit: contain;
-            -webkit-transform: translateZ(0); /* iOS Hardware Acceleration */
+            width: 100% !important; height: 100% !important; 
+            object-fit: contain; /* Erhält Seitenverhältnis ohne Abschneiden */
+            background: black;
+        }
+
+        /* AR Button */
+        .ar-button { 
+            background: white; border-radius: 30px; border: none; padding: 15px 30px;
+            position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+            font-weight: bold; color: #4285f4;
         }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay"><button id="start-btn" onclick="initViewer()">START</button></div>
+    <div id="start-overlay">
+        <button id="start-btn" onclick="initViewer()">START</button>
+    </div>
 
     <audio id="sync-audio" src="morse (2).mp3" preload="auto"></audio>
 
     <div class="reveal">
         <div class="slides">
-            <section><h1>Ready</h1></section>
-            <section><h3>Analyse</h3><img src="IMG-20260205-WA0000.jpg" style="max-height: 70vh;"></section>
+            <section><h1>Bereit</h1></section>
+            
+            <section>
+                <img src="IMG-20260205-WA0000.jpg" style="max-height: 80vh; border-radius: 10px;">
+            </section>
+
             <section data-background-color="#000">
                 <div class="fs-container">
-                    <video id="sync-video" class="fs-media" playsinline preload="auto" muted>
+                    <video id="sync-video" class="fs-media" playsinline webkit-playsinline preload="auto">
                         <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
                     </video>
                 </div>
             </section>
+
             <section data-background-color="#000">
                 <div class="fs-container">
-                    <model-viewer id="ar-element" class="fs-media" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer quick-look" camera-controls></model-viewer>
+                    <model-viewer class="fs-media" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer quick-look" camera-controls interaction-prompt="none">
+                        <button slot="ar-button" class="ar-button">AR STARTEN</button>
+                    </model-viewer>
                 </div>
             </section>
         </div>
@@ -50,17 +84,25 @@
 
     <script>
         const deck = new Reveal();
-        deck.initialize({ controls: false, progress: false, touch: false, transition: 'none' });
+        deck.initialize({ 
+            controls: false, progress: false, touch: false, 
+            transition: 'none', width: '100%', height: '100%', margin: 0 
+        });
         
         const audio = document.getElementById("sync-audio");
         const video = document.getElementById("sync-video");
+
         let serverTimeOffset = 0;
         let currentStartTime = 0;
-        let isSyncing = false;
 
         async function initViewer() {
             document.getElementById("start-overlay").style.display = 'none';
-            const pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "u_" + Math.random().toString(36).substring(7) });
+            
+            // Apple Audio-Kontext "aufwecken"
+            audio.play().then(() => audio.pause());
+            video.play().then(() => video.pause());
+
+            const pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "u_main" });
             const res = await pubnub.time();
             serverTimeOffset = Math.floor(res.timetoken / 10000) - Date.now();
 
@@ -69,40 +111,34 @@
                     if (m.message.index !== undefined) {
                         deck.slide(m.message.index);
                         currentStartTime = m.message.startTime;
-                        doHardJump(); // Sofort hart springen beim Wechsel
+                        sync(true);
                     }
                 }
             });
             pubnub.subscribe({ channels: [My_Channel_Name] });
 
-            // Weniger aggressive Prüfung für iOS (alle 1000ms statt 250ms)
-            setInterval(checkDrift, 1000);
+            setInterval(() => sync(false), 1000); // Seltener prüfen für Apple Stabilität
         }
 
-        function doHardJump() {
+        function sync(force) {
             const idx = deck.getState().indexh;
             const el = (idx === 2) ? video : (idx === 1 ? audio : null);
             if (!el || !currentStartTime) return;
 
             const target = ((Date.now() + serverTimeOffset) - currentStartTime) / 1000;
-            el.currentTime = target;
-            if (el.paused) el.play().catch(() => { el.muted = true; el.play(); });
-        }
-
-        function checkDrift() {
-            const idx = deck.getState().indexh;
-            const el = (idx === 2) ? video : (idx === 1 ? audio : null);
-            if (!el || !currentStartTime || isSyncing) return;
-
-            const target = ((Date.now() + serverTimeOffset) - currentStartTime) / 1000;
             const diff = Math.abs(target - el.currentTime);
 
-            // iOS FIX: Nur springen, wenn die Abweichung > 0.5s ist. 
-            // PlaybackRate Korrekturen (1.05 etc) verursachen das Stottern!
-            if (diff > 0.5) {
-                isSyncing = true;
+            // Nur springen wenn nötig (verhindert Audio-Stottern)
+            if (force || diff > 0.4) {
                 el.currentTime = target;
-                setTimeout(() => { isSyncing = false; }, 100); 
+            }
+
+            if (el.paused && target > 0 && target < el.duration) {
+                el.play().catch(e => {
+                    // Falls Apple Playback blockiert, stumm schalten als Fallback
+                    el.muted = true;
+                    el.play();
+                });
             }
         }
     </script>
