@@ -3,122 +3,163 @@
 <head>
     <meta charset="UTF-8">
     <title>Wissenschaftswoche 2026</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
     <style>
-        /* Steve Jobs Ästhetik: Schwarz, clean, massive Schrift */
-        html, body { background-color: #000; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        
-        .reveal h1, .reveal h2, .reveal p { color: #fff; text-transform: none; }
-        .highlight { color: #2196F3; font-weight: bold; }
-        .big-number { font-size: 3em; font-weight: bold; color: #2196F3; display: block; }
-        .sub-text { font-size: 0.5em; color: #888; margin-top: 20px; }
+        /* Modernes Design-System */
+        :root {
+            --accent: #2196F3;
+            --bg: #0a0a0a;
+            --text-main: #ffffff;
+            --text-muted: #888888;
+        }
 
-        /* Overlay & UI */
-        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
-        #start-btn { padding: 20px 50px; background: #333; color: white; border: 1px solid #555; border-radius: 50px; font-size: 18px; cursor: pointer; transition: 0.3s; }
-        #start-btn:hover { background: #2196F3; border-color: #2196F3; }
+        body { background-color: var(--bg); font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif; }
         
-        /* Vollbild Medien Container */
-        .fs-container { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
-        video { width: 100%; height: 100%; object-fit: cover; }
+        /* Flexibles Layout für alle Screens */
+        .reveal .slides section {
+            height: 100% !important;
+            display: flex !important;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* Typografie die atmet */
+        h1, h2, h3 { text-transform: none !important; margin: 0 !important; letter-spacing: -0.03em !important; }
+        .hero-text { font-size: 15vmin !important; font-weight: 800; background: linear-gradient(45deg, #fff, #888); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .sub-hero { font-size: 5vmin !important; color: var(--text-muted); font-weight: 300; margin-top: 2vh !important; }
+        .highlight { color: var(--accent); font-weight: bold; }
         
-        /* AR Button Styling */
-        .ar-button { background: white; border-radius: 30px; border: none; padding: 15px 30px; position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); font-weight: bold; color: #000; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+        /* QR-Code CSS Kunst (Sieht immer scharf aus) */
+        .qr-visual { position: relative; width: 30vmin; height: 30vmin; margin: 20px auto; }
         
-        #status { position: fixed; top: 10px; left: 10px; color: #444; font-size: 10px; font-family: monospace; pointer-events: none; z-index: 50; }
+        /* Position Pattern (Die großen Quadrate) */
+        .finder-pattern {
+            width: 100%; height: 100%;
+            border: 3vmin solid white;
+            position: absolute;
+            box-sizing: border-box;
+            display: flex; justify-content: center; align-items: center;
+        }
+        .finder-inner { width: 50%; height: 50%; background: white; }
+        
+        /* Alignment Pattern (Kleines Quadrat) */
+        .align-pattern {
+            width: 60%; height: 60%;
+            border: 1.5vmin solid var(--accent);
+            position: absolute; top: 20%; left: 20%;
+            display: flex; justify-content: center; align-items: center;
+            box-shadow: 0 0 20px rgba(33, 150, 243, 0.5);
+        }
+        .align-dot { width: 30%; height: 30%; background: var(--accent); }
+
+        /* Sync Status & Overlay */
+        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 9999; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+        #start-btn { padding: 20px 40px; background: white; color: black; border: none; border-radius: 40px; font-weight: bold; font-size: 1.2rem; cursor: pointer; box-shadow: 0 10px 30px rgba(255,255,255,0.2); }
+        #status-pill { position: fixed; top: 15px; right: 15px; background: rgba(255,255,255,0.1); backdrop-filter: blur(10px); padding: 5px 12px; border-radius: 15px; font-size: 10px; color: #888; font-family: monospace; z-index: 100; border: 1px solid rgba(255,255,255,0.1); }
+        
+        /* Fullscreen Media */
+        .fs-media-container { width: 100vw; height: 100vh; position: absolute; top: 0; left: 0; display: flex; justify-content: center; align-items: center; background: black; }
+        video { width: 100%; height: 100%; object-fit: contain; }
+        
+        .ar-btn { position: absolute; bottom: 8vh; padding: 15px 30px; background: white; color: black; border-radius: 30px; font-weight: bold; text-decoration: none; box-shadow: 0 5px 20px rgba(0,0,0,0.5); z-index: 1000; }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay"><button id="start-btn" onclick="initViewer()">Präsentation beitreten</button></div>
-    <div id="status">SYNC: <span id="sync-val">Ready</span></div>
+    <div id="start-overlay">
+        <h2 style="margin-bottom: 30px;">Science Week 26</h2>
+        <button id="start-btn" onclick="initViewer()">JOIN SESSION</button>
+    </div>
+    
+    <div id="status-pill">SYNC: <span id="sync-val">WAITING</span></div>
+
+    <audio id="sync-audio" src="morse (2).mp3" preload="auto"></audio>
 
     <div class="reveal">
         <div class="slides">
 
-            <section>
-                <h1 class="r-fit-text">QR CODE</h1>
-                <p style="color:#666;">Wissenschaftswoche 2026</p>
+            <section data-auto-animate>
+                <div data-id="box" style="width: 15vmin; height: 15vmin; background: white; margin-bottom: 20px;"></div>
+                <h1 data-id="title" class="hero-text">QR</h1>
+                <p data-id="sub" class="sub-hero">Science Week 2026</p>
             </section>
 
             <section data-auto-animate>
-                <h2 style="font-weight: 300;">Physische Darstellung</h2>
-                <h1 class="r-fit-text">BINÄRER DATEN</h1>
-                [span_4](start_span)<p class="sub-text">Mit Bitmask-Invertierung zur Fehlervermeidung[span_4](end_span)</p>
+                <div style="display: flex; align-items: center; gap: 20px;">
+                    <h1 data-id="title" class="hero-text" style="font-size: 8vmin !important; opacity: 0.5;">QR</h1>
+                    <div data-id="box" style="width: 2px; height: 8vmin; background: white;"></div>
+                    <h2 style="font-size: 5vmin;">Binäre<br>Maske</h2>
+                </div>
+                <p class="sub-text" style="max-width: 80%;">Eine physische Darstellung von <span class="highlight">0</span> und <span class="highlight">1</span>.</p>
             </section>
 
             <section data-auto-animate>
-                <h3>Die Anatomie</h3>
-                <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 50px;">
-                    <div class="fragment fade-up">
-                        <div style="width: 100px; height: 100px; border: 10px solid #fff; background: black;"></div>
-                        <p>Position</p>
+                <h3 style="font-size: 4vmin; margin-bottom: 40px !important;">ANATOMIE</h3>
+                <div class="r-stack">
+                    <div class="qr-visual fragment fade-in" data-fragment-index="1">
+                        <div class="finder-pattern" style="top:0; left:0;"><div class="finder-inner"></div></div>
                     </div>
-                    <div class="fragment fade-up">
-                        <div style="width: 60px; height: 60px; border: 6px solid #666; background: black;"></div>
-                        <p>Ausrichtung</p>
+                    <div class="qr-visual fragment fade-in" data-fragment-index="2">
+                        <div class="align-pattern"><div class="align-dot"></div></div>
                     </div>
-                    <div class="fragment fade-up">
-                        <div style="width: 100px; height: 10px; background: repeating-linear-gradient(90deg, #fff, #fff 10px, #000 10px, #000 20px);"></div>
-                        <p>Timing</p>
+                    <div class="qr-visual fragment fade-in" data-fragment-index="3">
+                         <div style="position: absolute; top: 10%; left: 30%; right: 30%; height: 2px; border-top: 4px dotted #666;"></div>
                     </div>
                 </div>
-                [span_5](start_span)<p class="sub-text" style="margin-top: 60px;">Erforderliche Muster für eindeutiges Auslesen[span_5](end_span)</p>
+                <div style="margin-top: 30px; font-size: 3vmin; color: #888;">
+                    <span class="fragment" data-fragment-index="1">Position</span> • 
+                    <span class="fragment" data-fragment-index="2">Ausrichtung</span> • 
+                    <span class="fragment" data-fragment-index="3">Timing</span>
+                </div>
             </section>
 
-            <section>
-                <h2 style="color: #888;">Das Problem:</h2>
-                <h3>Schmutz & Beschädigung</h3>
-                <br>
-                <h2 style="color: #2196F3;" class="fragment">Die Lösung:</h2>
-                <h1 class="r-fit-text fragment">REED-SOLOMON</h1>
-                [span_6](start_span)<p class="fragment">Mathematische Redundanz[span_6](end_span)</p>
+            <section data-auto-animate>
+                <h2 style="font-size: 4vmin; color: #666;">REED-SOLOMON</h2>
+                <div style="display: flex; align-items: baseline; justify-content: center; gap: 10px; margin-top: 20px;">
+                    <span class="highlight" style="font-size: 25vmin; line-height: 1;">30</span>
+                    <span style="font-size: 10vmin;">%</span>
+                </div>
+                <p style="font-size: 4vmin;">Level H (High)</p>
+                <p class="sub-text">Daten bleiben lesbar trotz Zerstörung.</p>
             </section>
 
-            <section>
-                <h3>Bis zu</h3>
-                <span class="r-fit-text highlight">30%</span>
-                <h3>Datenverlust</h3>
-                [span_7](start_span)<p>Level H (High) ermöglicht Lesbarkeit trotz massiver Schäden[span_7](end_span).</p>
-            </section>
-
-            <section>
-                <p style="font-size: 1.5em;">1992</p>
-                <h1>Masahiro Hara</h1>
-                [span_8](start_span)<p style="color: #888;">Inspiriert durch das Brettspiel Go[span_8](end_span)</p>
+            <section data-auto-animate>
+                <p style="font-size: 15vmin; font-weight: bold; color: #333;">1992</p>
+                <h2 style="font-size: 6vmin;">Masahiro Hara</h2>
+                <div style="width: 20vmin; height: 20vmin; margin: 30px auto; border: 1px solid #444; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px;">
+                    <div style="background: #222;"></div><div style="background: #fff;"></div><div style="background: #222;"></div>
+                    <div style="background: #fff;"></div><div style="background: #222;"></div><div style="background: #fff;"></div>
+                    <div style="background: #222;"></div><div style="background: #fff;"></div><div style="background: #222;"></div>
+                </div>
+                <p class="sub-text">Inspiriert vom Brettspiel Go.</p>
             </section>
 
             <section data-background-color="#000">
-                <div class="fs-container">
-                    <video id="sync-video" playsinline webkit-playsinline preload="auto">
+                <div class="fs-media-container">
+                    <video id="sync-video" playsinline webkit-playsinline preload="auto" muted>
                         <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
                     </video>
                 </div>
             </section>
 
-            <section data-background-color="#111">
-                <div class="fs-container">
+            <section data-background-color="#000">
+                <div class="fs-media-container">
                     <model-viewer 
-                        id="ar-element" 
+                        id="ar-model"
                         src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
-                        ar 
-                        ar-modes="webxr scene-viewer quick-look" 
-                        camera-controls 
-                        auto-rotate
-                        style="width: 100vw; height: 80vh;">
-                        <button slot="ar-button" class="ar-button">
-                            IN AR ANSEHEN
-                        </button>
+                        ar ar-modes="webxr scene-viewer quick-look" 
+                        camera-controls auto-rotate
+                        style="width: 100%; height: 100%;">
+                        <button slot="ar-button" class="ar-btn">📷 IM RAUM PLATZIEREN</button>
                     </model-viewer>
                 </div>
-                <p style="position:absolute; bottom: 20px; width: 100%; text-align: center; color: #666; font-size: 12px;">
-                    Torva Precision Sync v4 - WebAR Module
-                </p>
             </section>
 
         </div>
@@ -129,100 +170,82 @@
     <script src="config.js"></script>
 
     <script>
-        // Reveal Config für Zuschauer: Keine Controls, Passiv
         const deck = new Reveal();
-        deck.initialize({ 
-            controls: false, 
-            progress: false, 
-            touch: false, 
-            transition: 'slide',
-            backgroundTransition: 'fade',
-            disableLayout: true, // Wichtig für Vollbild Video
-            margin: 0
+        deck.initialize({
+            controls: false, progress: false, touch: false,
+            width: "100%", height: "100%", margin: 0, minScale: 1, maxScale: 1,
+            transition: 'slide', backgroundTransition: 'fade'
         });
-        
-        const video = document.getElementById("sync-video");
-        const statusVal = document.getElementById("sync-val");
-        let serverTimeOffset = 0;
-        let currentStartTime = 0;
 
-        // Video Index ist jetzt Slide Nummer 6 (Index 6, da wir bei 0 starten)
-        // Checken wir die Reihenfolge: 
-        // 0:Title, 1:Binär, 2:Anatomie, 3:Reed-Solomon, 4:30%, 5:History, 6:VIDEO, 7:AR
-        const VIDEO_INDEX = 6;
+        const video = document.getElementById("sync-video");
+        const statusEl = document.getElementById("sync-val");
+        const VIDEO_SLIDE_INDEX = 5; // Index 5 = 6. Folie
+
+        let serverTimeOffset = 0;
+        let videoStartTime = 0;
 
         async function initViewer() {
             document.getElementById("start-overlay").style.display = 'none';
+            statusEl.innerText = "CONNECTING...";
             
-            // Video "Silent Unlock" für iOS
-            try { video.muted = true; await video.play(); video.pause(); video.currentTime = 0; video.muted = false; } catch(e){}
+            // iOS Audio/Video Unlock
+            const unlock = async (el) => { try { el.play().then(() => { el.pause(); el.currentTime = 0; }); } catch(e){} };
+            await unlock(document.getElementById("sync-audio"));
+            await unlock(video);
 
             const pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "u_" + Math.random().toString(36).substring(7) });
             
-            // Time Sync
-            const res = await pubnub.time();
-            serverTimeOffset = Math.floor(res.timetoken / 10000) - Date.now();
+            // 1. Time Sync
+            const t = await pubnub.time();
+            serverTimeOffset = Math.floor(t.timetoken / 10000) - Date.now();
+            statusEl.innerText = "READY";
 
+            // 2. Message Listener
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
+                    
+                    // Slide Sync
                     if (msg.index !== undefined) {
-                        // Slide Wechsel
                         deck.slide(msg.index);
                         
-                        // Wenn es Fragmente (Animationen) gibt
+                        // Fragment Sync (für die Animationen auf Slide 3)
                         if (msg.fragment !== undefined) {
-                            // Wir navigieren solange bis wir beim richtigen Fragment sind
-                            const currentIndices = deck.getIndices();
-                            if(currentIndices.f < msg.fragment) deck.next();
+                            let currentFrag = deck.getIndices().f;
+                            // Solange simulieren bis wir beim richtigen Schritt sind
+                            while (currentFrag < msg.fragment) { deck.next(); currentFrag++; }
+                            while (currentFrag > msg.fragment) { deck.prev(); currentFrag--; }
                         }
 
-                        // Video Sync Daten speichern
-                        currentStartTime = msg.startTime;
-                        
-                        // Wenn wir auf der Video Slide sind, Sync starten
-                        if (msg.index === VIDEO_INDEX) {
-                            syncVideo(true);
+                        // Video Logic
+                        if (msg.index === VIDEO_SLIDE_INDEX && msg.startTime) {
+                            videoStartTime = msg.startTime;
+                            video.muted = false; // Ton an wenn Sync startet
                         } else {
-                            video.pause(); // Video stoppen auf anderen Slides
+                            video.pause();
                         }
                     }
                 }
             });
             pubnub.subscribe({ channels: [My_Channel_Name] });
 
-            // Loop um Video synchron zu halten
+            // 3. Sync Loop (nur für Video Slide aktiv)
             setInterval(() => {
-                if(deck.getIndices().h === VIDEO_INDEX) syncVideo(false);
+                if (deck.getIndices().h === VIDEO_SLIDE_INDEX && videoStartTime) {
+                    const now = Date.now() + serverTimeOffset;
+                    const target = (now - videoStartTime) / 1000;
+                    
+                    if (target > 0 && target < video.duration) {
+                        const diff = target - video.currentTime;
+                        if (Math.abs(diff) > 0.5) video.currentTime = target; // Hard Sync
+                        else if (Math.abs(diff) > 0.1) video.playbackRate = diff > 0 ? 1.05 : 0.95; // Soft Sync
+                        else video.playbackRate = 1.0;
+
+                        if (video.paused) video.play();
+                        statusEl.innerText = "LIVE " + Math.round(diff*1000) + "ms";
+                    }
+                }
             }, 500);
-        }
-
-        function syncVideo(force) {
-            if (!currentStartTime) return;
-            
-            // Berechnung der aktuellen Position im Video basierend auf Serverzeit
-            const now = Date.now() + serverTimeOffset;
-            const targetTime = (now - currentStartTime) / 1000;
-            
-            if (targetTime < 0) return; // Video startet erst gleich
-
-            const diff = targetTime - video.currentTime;
-
-            // Harter Sprung bei großer Abweichung (> 0.5s)
-            if (force || Math.abs(diff) > 0.5) {
-                video.currentTime = targetTime;
-            } 
-            // Feine Anpassung der Geschwindigkeit bei kleiner Abweichung
-            else if (Math.abs(diff) > 0.1) {
-                video.playbackRate = diff > 0 ? 1.05 : 0.95;
-            } else {
-                video.playbackRate = 1.0;
-            }
-
-            if (video.paused && targetTime < video.duration) {
-                video.play().catch(e => console.log("Autoplay blocked"));
-            }
-            statusVal.innerText = Math.round(diff * 1000) + "ms";
         }
     </script>
 </body>
