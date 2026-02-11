@@ -2,86 +2,70 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Torva Presenter</title>
 <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
-
 <style>
-body { font-family: sans-serif; background:#111; color:#fff; display:flex; flex-direction:column; align-items:center; padding:20px; }
-h1{ color:#00f2ff; }
-
-.button-grid { display:grid; grid-template-columns:1fr 1fr; gap:15px; max-width:400px; width:100%; }
-
-button{
-background:#222;
-border:1px solid #444;
-color:#fff;
-padding:15px;
-border-radius:8px;
-font-weight:bold;
-cursor:pointer;
-}
-
-button.active{ border-color:#00ff00; color:#00ff00; }
-
-#status{ margin-top:20px; font-size:0.8rem; color:#666; }
+body{background:#111;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;padding:20px;}
+.button-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:400px;}
+button{padding:15px;background:#222;border:1px solid #444;color:#fff;cursor:pointer;}
+button.active{border-color:#00ff00;color:#00ff00;}
+#status{margin-top:15px;font-size:.8rem;color:#666;}
 </style>
 </head>
 <body>
 
-<h1>TORVA CONTROL</h1>
+<h2>TORVA CONTROL</h2>
 
 <div class="button-grid">
-<button onclick="sendCommand(0,null)">GO</button>
-<button onclick="sendCommand(1,'morph_qr')">QR Morph</button>
+<button onclick="send('morph_qr')">QR Morph</button>
+<button onclick="send('damage')">Damage</button>
 
-<button onclick="sendCommand(null,'damage')">Damage</button>
-<button onclick="sendCommand(null,'heal')">Heal</button>
+<button onclick="send('heal')">Heal</button>
+<button onclick="toggle('finder',this)">Finder</button>
 
-<button onclick="toggleHighlight('finder',this)">Finder</button>
-<button onclick="toggleHighlight('format',this)">Format</button>
+<button onclick="toggle('timing',this)">Timing</button>
+<button onclick="toggle('format',this)">Format</button>
 
-<button onclick="toggleHighlight('sync',this)">Sync</button>
-<button onclick="sendCommand(3,null)">AR</button>
+<button onclick="toggle('version',this)">Version</button>
+<button onclick="toggle('data',this)">Data</button>
+
+<button onclick="toggle('error',this)">Error</button>
 </div>
 
 <div id="status">Ready</div>
 
 <script>
 const pubnub=new PubNub({
-publishKey:'pub-c-f5b11d3c-ddfe-4dfc-963e-6fae738aeb03',
-subscribeKey:'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7',
-userId:"presenter_mobile"
+publishKey:"pub-c-f5b11d3c-ddfe-4dfc-963e-6fae738aeb03",
+subscribeKey:"sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7",
+userId:"presenter"
 });
-
-function sendCommand(slide,action){
-const payload={};
-if(slide!==null)payload.slide=slide;
-if(action!==null)payload.action=action;
-publish(payload);
-}
 
 let activeBtn=null;
 
-function toggleHighlight(feature,btn){
+function send(action){
+publish({action});
+}
+
+function toggle(feature,btn){
 if(activeBtn===btn){
-activeBtn.classList.remove("active");
+btn.classList.remove("active");
 activeBtn=null;
 publish({action:"highlight",feature:null});
 }else{
 if(activeBtn)activeBtn.classList.remove("active");
 btn.classList.add("active");
 activeBtn=btn;
-publish({action:"highlight",feature:feature});
+publish({action:"highlight",feature});
 }
 }
 
 function publish(payload){
-const status=document.getElementById("status");
-status.innerText="Sending...";
-pubnub.publish({channel:'PrasiW.Woche',message:payload},(s)=>{
-if(s.error){status.innerText="Error";}
-else{status.innerText="Sent";setTimeout(()=>status.innerText="Ready",1000);}
+const s=document.getElementById("status");
+s.innerText="Sending...";
+pubnub.publish({channel:"PrasiW.Woche",message:payload},()=>{
+s.innerText="Sent";
+setTimeout(()=>s.innerText="Ready",800);
 });
 }
 </script>
