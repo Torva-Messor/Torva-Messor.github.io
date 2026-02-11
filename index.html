@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Viewer - Ultimate High Fidelity Edition</title>
+    <title>Torva Viewer - Flashy Flex Edition</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
@@ -11,121 +11,84 @@
     <style>
         :root { 
             --accent: #00f2ff; 
-            --damage: #ff0000;
-            --bg: #050505; 
-            --board-bg: #1a1a1a;
-            --matrix-green: #0f0;
+            --matrix: #0f0;
+            --bg: #000; 
         }
-        body { background: var(--bg); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
+        body { background: var(--bg); overflow: hidden; margin: 0; font-family: 'Courier New', monospace; }
 
+        /* --- BACKGROUND & GRID --- */
         #background-layer {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            position: fixed; inset: 0;
             display: flex; justify-content: center; align-items: center;
-            z-index: 1; pointer-events: none;
-            perspective: 1200px;
+            z-index: 1; perspective: 1200px;
         }
 
         .morph-container {
             display: grid;
             grid-template-columns: repeat(15, 1fr);
             grid-template-rows: repeat(15, 1fr);
-            width: 65vmin; height: 65vmin;
-            transition: all 0.7s cubic-bezier(0.19, 1, 0.22, 1);
+            width: 70vmin; height: 70vmin;
+            transition: all 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
             transform-style: preserve-3d;
         }
 
         .dot { 
             width: 100%; height: 100%; 
             display: flex; justify-content: center; align-items: center;
-            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); 
-            position: relative;
-            font-size: 0; /* Versteckt Binär-Text standardmäßig */
+            transition: all 0.4s ease; 
+            font-weight: bold;
         }
 
-        /* --- GO BRETT STYLES --- */
+        /* --- GO MODE (Slide 0) --- */
         .mode-go { 
-            background: #1a1510; 
-            padding: 10px; border-radius: 4px; 
-            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
-            background-image: 
-                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background: #1a1510; border: 2px solid #333; padding: 10px;
+            background-image: linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px);
             background-size: calc(100% / 15) calc(100% / 15);
-            transform: rotateX(25deg) rotateZ(-1deg);
+            transform: rotateX(25deg) rotateZ(-2deg);
         }
         .mode-go .dot { border-radius: 50%; transform: scale(0.8); }
-        .mode-go .dot.white { background: radial-gradient(circle at 30% 30%, #fff, #ccc); box-shadow: 0 4px 8px rgba(0,0,0,0.4); }
-        .mode-go .dot.black { background: radial-gradient(circle at 30% 30%, #444, #000); box-shadow: 0 4px 8px rgba(0,0,0,0.4); }
+        .mode-go .dot.white { background: radial-gradient(circle at 30% 30%, #fff, #999); box-shadow: 2px 2px 5px #000; }
+        .mode-go .dot.black { background: radial-gradient(circle at 30% 30%, #444, #000); box-shadow: 2px 2px 5px #000; }
         .mode-go .dot.hidden { opacity: 0; }
 
-        /* --- BINARY TRANSITION STYLES --- */
-        .mode-binary { background: transparent; transform: rotateX(0deg) scale(1.1); gap: 2px; }
-        .mode-binary .dot { 
-            border-radius: 0; font-size: 1.8vmin; color: var(--matrix-green); 
-            text-shadow: 0 0 5px var(--matrix-green); font-weight: bold;
+        /* --- BINARY MODE (Transition Phase / Slide 1) --- */
+        .mode-binary { transform: rotateX(0deg) scale(1.2); gap: 2px; }
+        .mode-binary .dot { color: var(--matrix); font-size: 2vmin; text-shadow: 0 0 8px var(--matrix); }
+
+        /* --- QR MODE (Slide 2) --- */
+        .mode-qr { gap: 4px; transform: rotateY(10deg); }
+        .mode-qr .dot { border-radius: 2px; }
+        .mode-qr .dot.active { background: var(--accent); box-shadow: 0 0 15px var(--accent); }
+        .mode-qr .dot.inactive { background: rgba(0, 242, 255, 0.1); transform: scale(0.3); }
+
+        /* --- FLASH EFFECT --- */
+        .glitch-flash { animation: flash-anim 0.4s ease-out; }
+        @keyframes flash-anim {
+            0% { filter: brightness(5) white-space: pre; transform: scale(1.5); }
+            100% { filter: brightness(1); transform: scale(1); }
         }
 
-        /* --- QR STYLES --- */
-        .mode-qr { background: transparent; gap: 4px; transform: rotateX(10deg); }
-        .mode-qr .dot { border-radius: 2px; font-size: 0; }
-        .mode-qr .dot.active { 
-            background: var(--accent); 
-            box-shadow: 0 0 15px var(--accent);
-            animation: pulse-glow 2s infinite ease-in-out;
-        }
-        .mode-qr .dot.inactive { background: rgba(0, 242, 255, 0.05); transform: scale(0.2); }
-        
-        /* --- FLASHY ANIMATIONS --- */
-        @keyframes heavy-glitch {
-            0% { transform: translate(0) scale(1); filter: hue-rotate(0deg); }
-            20% { transform: translate(-10px, 5px) scale(1.2); filter: hue-rotate(90deg) brightness(2); }
-            40% { transform: translate(10px, -5px) scale(0.8); filter: invert(1); }
-            60% { transform: translate(-5px, -10px) scale(1.1); filter: hue-rotate(270deg); }
-            100% { transform: translate(0) scale(1); filter: hue-rotate(360deg); }
-        }
-        .glitch-effect { animation: heavy-glitch 0.4s ease-in-out; }
-
-        @keyframes glitch-red {
-            0% { transform: scale(1); filter: brightness(1); }
-            50% { transform: scale(1.2); filter: brightness(2); }
-            100% { transform: scale(1); filter: brightness(1); }
-        }
-        .dot.damaged { background: var(--damage) !important; box-shadow: 0 0 20px var(--damage); animation: glitch-red 0.2s infinite; }
-
-        @keyframes pulse-glow { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.7; transform: scale(0.9); } }
-
-        /* --- OVERLAYS --- */
+        /* --- UI & OVERLAYS --- */
+        .reveal { z-index: 10; }
         #video-overlay { 
             position: fixed; inset: 0; background: #000; z-index: 50; 
-            display: flex; justify-content: center; align-items: center;
-            opacity: 0; pointer-events: none; transition: opacity 1s ease-in-out; 
+            display: none; justify-content: center; align-items: center; 
         }
-        #video-overlay.active { opacity: 1; pointer-events: auto; }
-        video { width: 100%; height: 100%; object-fit: contain; }
-
+        #video-overlay.active { display: flex; }
+        
         #btn-start { 
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); z-index: 100;
-            border: 2px solid var(--accent); color: var(--accent); background: transparent; 
-            padding: 20px 50px; border-radius: 50px; cursor: pointer; 
-            text-transform: uppercase; letter-spacing: 4px; font-weight: bold;
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2); transition: 0.3s;
-        }
-        #btn-start:hover { background: var(--accent); color: #000; box-shadow: 0 0 50px var(--accent); }
-        
-        .status-text { 
-            color: var(--matrix-green); font-size: 1rem; position: fixed; bottom: 5vh; left: 5vw;
-            background: rgba(0,0,0,0.8); padding: 10px; border-left: 3px solid var(--matrix-green);
+            background: black; color: var(--accent); border: 2px solid var(--accent);
+            padding: 20px 40px; cursor: pointer; font-size: 1.2rem;
         }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay"><button id="btn-start" onclick="initApp()">Initialize System</button></div>
+    <button id="btn-start" onclick="initApp()">SYSTEM START</button>
 
     <div id="video-overlay">
-        <video id="main-video" playsinline preload="auto">
-            <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
-        </video>
+        <video id="main-video" playsinline><source src="qr-code-pubnub-torva-project.mp4" type="video/mp4"></video>
     </div>
 
     <div id="background-layer">
@@ -134,14 +97,8 @@
 
     <div class="reveal">
         <div class="slides">
-            <section><h2>ORIGIN</h2></section>
-            <section><div class="status-text" id="qr-status-text">> SYNC_READY</div></section>
-            <section data-background="#000"></section>
-            <section class="ar-slide">
-                <h2 style="color: white; text-shadow: 0 0 10px var(--accent);">DISCOVERY</h2>
-                <model-viewer id="astronaut-model" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer quick-look" camera-controls auto-rotate shadow-intensity="1">
-                    <button slot="ar-button" style="background: var(--accent); border: none; padding: 10px; border-radius: 5px;">🚀 AR STARTEN</button>
-                </model-viewer>
+            <section><h2>STRATEGY</h2></section> <section><h2>DECODING...</h2></section> <section><h2>ACCESS</h2></section> <section><h2>DISCOVERY</h2>
+                <model-viewer id="astronaut-model" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar auto-rotate style="width: 100%; height: 400px;"></model-viewer>
             </section>
         </div>
     </div>
@@ -155,7 +112,7 @@
 
         const grid = document.getElementById('grid');
         const dots = [];
-        let binaryLoop = null;
+        let binaryInterval = null;
 
         for(let i=0; i<225; i++) {
             let d = document.createElement('div');
@@ -164,17 +121,16 @@
             dots.push(d);
         }
 
-        function triggerFlash() {
-            grid.classList.add('glitch-effect');
-            setTimeout(() => grid.classList.remove('glitch-effect'), 400);
+        function flash() {
+            grid.classList.add('glitch-flash');
+            setTimeout(() => grid.classList.remove('glitch-flash'), 400);
         }
 
         function renderGo() {
-            clearInterval(binaryLoop);
+            clearInterval(binaryInterval);
             grid.className = 'morph-container mode-go';
-            dots.forEach((d, i) => {
-                d.innerHTML = '';
-                d.className = 'dot';
+            dots.forEach(d => {
+                d.innerHTML = ''; d.className = 'dot';
                 let r = Math.random();
                 if(r > 0.8) d.classList.add('black');
                 else if(r > 0.6) d.classList.add('white');
@@ -183,57 +139,51 @@
         }
 
         function renderBinary() {
-            triggerFlash();
+            flash();
             grid.className = 'morph-container mode-binary';
-            dots.forEach(d => {
-                d.className = 'dot';
-                d.innerText = Math.random() > 0.5 ? "1" : "0";
-            });
-            binaryLoop = setInterval(() => {
-                for(let i=0; i<20; i++) {
-                    dots[Math.floor(Math.random()*225)].innerText = Math.random() > 0.5 ? "1" : "0";
-                }
-            }, 50);
+            dots.forEach(d => { d.className = 'dot'; d.innerText = Math.random() > 0.5 ? '1' : '0'; });
+            binaryInterval = setInterval(() => {
+                for(let i=0; i<25; i++) dots[Math.floor(Math.random()*225)].innerText = Math.random() > 0.5 ? '1' : '0';
+            }, 60);
         }
 
         function renderQR() {
-            triggerFlash();
-            clearInterval(binaryLoop);
+            flash();
+            clearInterval(binaryInterval);
             grid.className = 'morph-container mode-qr';
             dots.forEach((d, i) => {
-                d.innerText = '';
+                d.innerText = ''; d.className = 'dot';
                 const x = i % 15; const y = Math.floor(i / 15);
                 const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
                 const isHollow = (x===1||x===2) && (y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
-                d.className = 'dot';
                 if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) d.classList.add('active');
                 else d.classList.add('inactive');
             });
         }
 
+        // --- PRESENTER INTERACTION ---
         deck.on('slidechanged', event => {
             const idx = event.indexh;
             if (idx === 0) renderGo();
-            if (idx === 1) renderBinary(); // Erst Binär-Flex, QR folgt per Signal
-            if (idx === 2) {
-                document.getElementById('video-overlay').classList.add('active');
-                document.getElementById('main-video').play();
-            }
+            if (idx === 1) renderBinary();
+            if (idx === 2) renderQR();
+            if (idx === 3) { /* AR Slide */ }
         });
 
         function initApp() {
-            document.getElementById('start-overlay').style.display = 'none';
+            document.getElementById('btn-start').style.display = 'none';
             renderGo();
+            
             const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v_" + Date.now() });
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
+                    // Wenn Presenter slide:X schickt
                     if(msg.slide !== undefined) deck.slide(msg.slide);
-                    if(msg.action === "qr") renderQR(); // Schaltet von Binär auf QR
-                    if(msg.action === "go") renderGo();
-                    if(msg.action === "damage") {
-                        dots.filter(d => d.classList.contains('active')).sort(() => 0.5 - Math.random()).slice(0, 10).forEach(d => d.classList.add('damaged'));
-                    }
+                    // Wenn Presenter spezifische Phasen schickt
+                    if(msg.phase === "go") deck.slide(0);
+                    if(msg.phase === "binary") deck.slide(1);
+                    if(msg.phase === "qr") deck.slide(2);
                 }
             });
             pubnub.subscribe({ channels: ['PrasiW.Woche'] });
