@@ -2,101 +2,154 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Go to QR Morph</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
+    <title>Fancy Viewer Final</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
 
     <style>
-        /* --- STEVE JOBS AESTHETIC --- */
-        :root { --accent: #00f2ff; --bg: #050505; --stone-white: #f0f0f0; --stone-black: #1a1a1a; }
-        body { background: var(--bg); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+        :root { 
+            --accent: #00f2ff; 
+            --damage: #ff0055; 
+            --heal: #00ff88;
+            --bg: #050505; 
+            --board-bg: #2b2b2b; /* Dunkles Grau für das Brett */
+        }
+        body { background: var(--bg); overflow: hidden; font-family: 'Inter', sans-serif; }
 
-        /* Das Grid */
+        /* --- THE GRID ENGINE --- */
         .morph-container {
             display: grid;
-            grid-template-columns: repeat(15, 1fr); /* 15x15 Grid für bessere QR Optik */
+            grid-template-columns: repeat(15, 1fr);
             grid-template-rows: repeat(15, 1fr);
             gap: 6px;
-            width: 55vmin;
-            height: 55vmin;
+            width: 55vmin; height: 55vmin;
             margin: 0 auto;
-            position: relative;
-            transition: transform 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+            padding: 20px;
+            border-radius: 10px;
+            transition: all 1s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
 
-        .dot {
-            width: 100%;
-            height: 100%;
-            transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); /* Bouncy effekt */
+        .dot { width: 100%; height: 100%; transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        /* --- MODE 1: GO BRETT (Edel & Kontrastreich) --- */
+        .mode-go {
+            background: var(--board-bg); /* Hintergrund damit man schwarze Steine sieht */
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6); /* Schwebender Effekt */
+            gap: 2px; /* Steine enger zusammen beim Go */
+            transform: scale(0.9);
         }
 
-        /* --- ZUSTAND 1: GO BRETT (Organisch, Rund, 3D) --- */
-        .mode-go .dot {
-            border-radius: 50%;
-            transform: scale(0.85);
-            box-shadow: inset -2px -2px 6px rgba(0,0,0,0.5); /* 3D Effekt */
-        }
-        .mode-go .dot.state-0 { background: transparent; box-shadow: none; } /* Leeres Feld */
-        .mode-go .dot.state-1 { background: radial-gradient(circle at 30% 30%, #555, #000); } /* Schwarzer Stein */
-        .mode-go .dot.state-2 { background: radial-gradient(circle at 30% 30%, #fff, #ccc); box-shadow: 0 2px 5px rgba(0,0,0,0.5); } /* Weißer Stein */
+        .mode-go .dot { border-radius: 50%; transform: scale(0.95); }
 
-        /* --- ZUSTAND 2: QR CODE (Digital, Eckig, Leuchtend) --- */
-        .mode-qr { transform: rotate(0deg) scale(1.1); }
-        
-        .mode-qr .dot {
-            border-radius: 2px; /* Fast eckig, ganz leicht weich für Modernität */
-            transform: scale(1.0);
+        /* Weißer Stein (Porzellan Look) */
+        .mode-go .dot.white { 
+            background: radial-gradient(circle at 35% 35%, #fff, #ccc); 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        /* Schwarzer Stein (Obsidian Look - Hellerer Glanz für Sichtbarkeit) */
+        .mode-go .dot.black { 
+            background: radial-gradient(circle at 30% 30%, #666, #000); 
+            box-shadow: 0 2px 5px rgba(0,0,0,0.6), inset 1px 1px 2px rgba(255,255,255,0.2); 
+        }
+
+        /* Leeres Feld (Gitterkreuz Andeutung) */
+        .mode-go .dot.hidden { 
+            background: transparent;
+            opacity: 0.2;
+            transform: scale(0.1); 
+            background-color: #fff; /* Kleiner Punkt als Raster */
+        }
+
+        /* --- MODE 2: QR CODE (Digital & Neon) --- */
+        .mode-qr {
+            background: transparent; /* Brett verschwindet */
             box-shadow: none;
+            gap: 4px; /* Pixel Abstand */
+            transform: scale(1.1);
         }
-        
-        /* Im QR Modus ignorieren wir schwarz/weiß und machen alles zur "Datenfarbe" oder transparent */
-        .mode-qr .dot.qr-active {
-            background: var(--accent);
+
+        .mode-qr .dot { border-radius: 2px; transform: scale(1); }
+
+        .mode-qr .dot.active { 
+            background: var(--accent); 
             box-shadow: 0 0 15px var(--accent); /* Neon Glow */
         }
-        .mode-qr .dot.qr-inactive {
-            background: rgba(255,255,255,0.05); /* Leichte Grid Spur */
-            transform: scale(0.3);
+        
+        .mode-qr .dot.inactive { 
+            background: rgba(255,255,255,0.05); /* Leichte Matrix Spur */
+            transform: scale(0.2);
+            border-radius: 50%;
         }
 
-        /* --- TYPOGRAPHY & LAYOUT --- */
-        .reveal h1 { 
-            font-weight: 800; letter-spacing: -0.05em; 
-            background: linear-gradient(180deg, #fff, #888); 
-            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        /* --- MODE 3: DAMAGE & HEAL --- */
+        .mode-damage .dot.damaged { 
+            background: var(--damage); 
+            box-shadow: 0 0 20px var(--damage); 
+            animation: glitch 0.3s infinite; 
         }
-        .caption {
-            font-size: 1.5rem; color: #666; margin-top: 40px; font-weight: 300; letter-spacing: 0.2em; text-transform: uppercase;
-            transition: opacity 0.5s;
+        
+        .mode-heal .dot.active {
+            transition: background 0.5s;
+            background: var(--heal) !important; /* Grüner Scan */
+            box-shadow: 0 0 20px var(--heal);
         }
 
-        /* Helper für den Button */
-        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 999; display: flex; align-items: center; justify-content: center; }
-        button { background: transparent; color: var(--accent); border: 1px solid var(--accent); padding: 15px 40px; font-size: 1.2rem; cursor: pointer; border-radius: 50px; }
+        @keyframes glitch { 
+            0% { opacity: 1; transform: translate(0,0) scale(1); }
+            20% { opacity: 0.8; transform: translate(-2px, 2px) scale(0.9); }
+            40% { opacity: 0.9; transform: translate(2px, -2px) scale(1.1); }
+            100% { opacity: 1; transform: translate(0,0) scale(1); }
+        }
+
+        /* --- VIDEO & AR --- */
+        #video-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: flex; align-items: center; justify-content: center;
+        }
+        video { width: 100%; height: 100%; object-fit: contain; }
+        
+        model-viewer { width: 100%; height: 80vh; margin-top: 5vh; }
+
+        /* BUTTON */
+        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
+        #btn-start { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 20px 50px; font-size: 1.2rem; border-radius: 50px; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay"><button onclick="initApp()">INITIALIZE SYSTEM</button></div>
+    <div id="start-overlay"><button id="btn-start" onclick="initApp()">Initialize Link</button></div>
 
     <div class="reveal">
         <div class="slides">
 
-            <section>
-                <h1>THE LINK</h1>
-                <p style="color: #666">Von analoger Strategie zu digitaler Identität.</p>
+            <section data-auto-animate>
+                <h3 id="morph-title" style="margin-bottom: 40px; opacity: 0.7;">ORIGIN</h3>
+                <div id="grid" class="morph-container mode-go"></div>
             </section>
 
-            <section id="morph-slide" data-auto-animate>
-                <div id="grid-container" class="morph-container mode-go">
-                    </div>
-                <div id="text-caption" class="caption">The Game of Go (1992)</div>
+            <section data-auto-animate>
+                <h3>REED-SOLOMON</h3>
+                <p style="color:#666; font-size: 0.8rem">Recovering Data Structure...</p>
+            </section>
+
+            <section data-background="#000">
+                <div id="video-container">
+                    <video id="main-video" playsinline webkit-playsinline>
+                        <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
+                    </video>
+                </div>
             </section>
 
             <section>
-                <h2>AR READY</h2>
+                <h3>AR OBJECT</h3>
+                <model-viewer 
+                    src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
+                    ar ar-modes="webxr scene-viewer quick-look" 
+                    camera-controls auto-rotate shadow-intensity="1">
+                </model-viewer>
             </section>
 
         </div>
@@ -104,101 +157,117 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
-    <script src="config.js"></script> <script>
+    <script src="config.js"></script>
+
+    <script>
         const deck = new Reveal();
         deck.initialize({ controls: false, progress: false, center: true, transition: 'fade' });
 
-        const grid = document.getElementById('grid-container');
-        const caption = document.getElementById('text-caption');
-        const gridSize = 15; // 15x15 Grid
-        let dots = [];
+        const grid = document.getElementById('grid');
+        const dots = [];
+        const gridSize = 15;
 
-        function createGrid() {
-            grid.innerHTML = '';
-            dots = [];
-            for (let i = 0; i < gridSize * gridSize; i++) {
-                let d = document.createElement('div');
-                d.className = 'dot state-0 qr-inactive'; // Default state
-                
-                // Wir fügen jedem Stein ein zufälliges Delay hinzu für den "Wellen-Effekt"
-                d.style.transitionDelay = (Math.random() * 0.3) + 's';
-                
-                grid.appendChild(d);
-                dots.push(d);
-            }
-            renderGo(); // Start mit Go
+        // Init Grid
+        for(let i=0; i<gridSize*gridSize; i++) {
+            let d = document.createElement('div');
+            d.className = 'dot';
+            // Random Delay für den "Ripple" Effekt bei Transition
+            d.style.transitionDelay = (Math.random() * 0.3) + 's';
+            grid.appendChild(d);
+            dots.push(d);
         }
 
-        // Simuliert Go-Brett Muster
+        // --- RENDER FUNKTIONEN ---
+
         function renderGo() {
             grid.className = 'morph-container mode-go';
-            caption.innerHTML = "The Inspiration: Go";
+            document.getElementById('morph-title').innerText = "1992: THE ORIGIN";
             
             dots.forEach(d => {
-                // Reset Klassen
-                d.classList.remove('qr-active', 'qr-inactive');
-                
-                // Zufällige Go Verteilung (Mehr leere Felder)
+                d.className = 'dot'; // Reset
                 let r = Math.random();
-                d.classList.remove('state-0', 'state-1', 'state-2');
-                if(r > 0.85) d.classList.add('state-1'); // Schwarz
-                else if(r > 0.7) d.classList.add('state-2'); // Weiß
-                else d.classList.add('state-0'); // Leer
+                if(r > 0.8) d.classList.add('black');
+                else if(r > 0.65) d.classList.add('white');
+                else d.classList.add('hidden');
             });
         }
 
-        // Simuliert QR Code (mit Finder Patterns in den Ecken)
         function renderQR() {
             grid.className = 'morph-container mode-qr';
-            caption.innerHTML = '<span style="color:var(--accent)">The Result: QR Code</span>';
-
+            document.getElementById('morph-title').innerText = "THE MATRIX";
+            
             dots.forEach((d, i) => {
+                d.className = 'dot'; // Reset
                 const x = i % gridSize;
                 const y = Math.floor(i / gridSize);
-
-                // Logik für "Finder Patterns" (Die großen Quadrate in den Ecken)
-                // Oben Links, Oben Rechts, Unten Links
-                const isFinder = (x < 4 && y < 4) || (x > gridSize - 5 && y < 4) || (x < 4 && y > gridSize - 5);
                 
-                let isActive = false;
-                
-                if (isFinder) {
-                    // Mache Ringe für Finder Patterns
-                    // Außenring voll, Mitte leer, Punkt in Mitte
-                    isActive = true; 
-                    // Simpler Hack für hohle Quadrate:
-                    if((x===1||x===gridSize-2||x===gridSize-3) && (y>=1 && y<=2)) isActive = false; // Kleine Anpassung für Optik
-                } else {
-                    // Rest ist zufälliges Rauschen (Daten)
-                    isActive = Math.random() > 0.5;
-                }
+                // Finder Patterns (Ecken)
+                const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
+                // Finder Pattern "Loch" in der Mitte
+                const isHollow = (x===1||x===2) && (y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
 
-                if(isActive) {
-                    d.classList.add('qr-active');
-                    d.classList.remove('qr-inactive');
+                if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) {
+                    d.classList.add('active');
                 } else {
-                    d.classList.add('qr-inactive');
-                    d.classList.remove('qr-active');
+                    d.classList.add('inactive');
                 }
             });
         }
+
+        function renderDamage() {
+            grid.classList.add('mode-damage'); // Add damage class to container
+            dots.forEach(d => {
+                // Beschädige 30% der aktiven Pixel
+                if(d.classList.contains('active') && Math.random() > 0.6) {
+                    d.classList.remove('active');
+                    d.classList.add('damaged');
+                }
+            });
+        }
+
+        function renderHeal() {
+            grid.classList.remove('mode-damage');
+            grid.classList.add('mode-heal');
+            dots.forEach(d => {
+                if(d.classList.contains('damaged')) {
+                    d.classList.remove('damaged');
+                    d.classList.add('active'); // Geheilt
+                }
+            });
+            // Reset nach kurzem grünen Aufleuchten
+            setTimeout(() => {
+                grid.classList.remove('mode-heal');
+            }, 1000);
+        }
+
+        function playVideo() {
+            const v = document.getElementById('main-video');
+            v.currentTime = 0;
+            v.muted = false;
+            v.play().catch(() => { v.muted = true; v.play(); }); // Autoplay Policy Fallback
+        }
+
+        // --- APP START ---
 
         function initApp() {
             document.getElementById('start-overlay').style.display = 'none';
-            createGrid();
+            renderGo(); // Start Zustand
 
-            // Setup PubNub
-            const pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "viewer" });
+            const pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "view" });
+            
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
-                    if(msg.slide !== undefined) deck.slide(msg.slide);
-                    
-                    // DER MAGIC TRIGGER
-                    if(msg.action === "morph") {
-                        if(msg.state === "qr") renderQR();
-                        else renderGo();
+                    if(msg.slide !== undefined && deck.getIndices().h !== msg.slide) {
+                        deck.slide(msg.slide);
                     }
+
+                    // Mapping der Actions
+                    if(msg.action === "morph_go") renderGo();
+                    if(msg.action === "morph_qr") renderQR();
+                    if(msg.action === "damage") renderDamage();
+                    if(msg.action === "heal") renderHeal();
+                    if(msg.action === "play_video") playVideo();
                 }
             });
             pubnub.subscribe({ channels: [My_Channel_Name] });
