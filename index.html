@@ -2,181 +2,187 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Viewer - Synced</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torva Hybrid Viewer</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
-    
+
     <style>
-        :root { --accent: #00f2ff; --bg: #1a1a1a; }
-        body { background: #000; overflow: hidden; }
-        
-        /* --- GRID STYLES (Der Morph Effekt) --- */
-        .morph-container {
-            display: grid;
-            grid-template-columns: repeat(15, 1fr);
-            grid-template-rows: repeat(15, 1fr);
-            gap: 4px;
-            width: 70vmin; height: 70vmin;
-            margin: 0 auto;
-            transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55); /* Bouncy Effect */
-        }
+        /* --- CORE LAYOUT --- */
+        body { background: #000; margin: 0; overflow: hidden; }
+        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 99999; display: flex; justify-content: center; align-items: center; }
+        #start-btn { padding: 20px 50px; background: cyan; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px cyan; }
+        #debug { position: fixed; top: 5px; left: 5px; color: lime; font-family: monospace; z-index: 10000; font-size: 10px; pointer-events: none; }
 
-        .dot {
-            width: 100%; height: 100%;
-            background: #333;
-            border-radius: 50%; /* Start als Kreis (GO Stein) */
-            transition: all 0.6s ease;
-            box-shadow: 2px 2px 5px rgba(0,0,0,0.5);
-        }
-
-        /* Go Stein Look */
-        .dot.black { background: radial-gradient(circle at 30% 30%, #444, #000); transform: scale(0.9); }
-        .dot.white { background: radial-gradient(circle at 30% 30%, #fff, #bbb); transform: scale(0.9); box-shadow: 0 0 5px rgba(255,255,255,0.2); }
-
-        /* QR Code Look */
-        .mode-qr .dot {
-            border-radius: 0%; /* Wird quadratisch */
-            background: #222;
-            transform: scale(1);
-            box-shadow: none;
-        }
-        .mode-qr .dot.active {
-            background: var(--accent);
-            box-shadow: 0 0 10px var(--accent); /* Neon Glow */
-        }
-        .mode-qr .dot.finder {
-            background: #fff;
-            box-shadow: 0 0 15px #fff;
-            z-index: 2;
-        }
-
-        /* --- VIDEO OVERLAY FIX --- */
-        /* Das Video liegt ÜBER allem anderen, ist aber standardmäßig unsichtbar */
-        #video-overlay {
+        /* --- VIDEO ENGINE (Overlay + Sync) --- */
+        #video-layer {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: #000;
-            z-index: 999;
-            display: flex; align-items: center; justify-content: center;
+            background: #000; z-index: 500; /* Über Reveal, unter UI */
             opacity: 0; pointer-events: none; transition: opacity 0.5s;
+            display: flex; align-items: center; justify-content: center;
         }
-        #video-overlay.show { opacity: 1; pointer-events: all; }
+        #video-layer.active { opacity: 1; pointer-events: all; }
         video { width: 100%; height: 100%; object-fit: contain; }
 
-        /* Start Button für Audio-Kontext */
-        #init-btn {
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            z-index: 10000; padding: 20px 40px; font-size: 20px;
-            background: var(--accent); border: none; cursor: pointer;
-            box-shadow: 0 0 20px var(--accent);
+        /* --- MORPH BOARD STYLES --- */
+        :root { --accent: #00f2ff; }
+        .morph-container {
+            display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr);
+            gap: 4px; width: 75vmin; height: 75vmin; margin: 0 auto;
+            transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55);
         }
+        .dot { width: 100%; height: 100%; border-radius: 50%; transition: all 0.6s ease; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); }
+        .dot.black { background: radial-gradient(circle at 30% 30%, #444, #000); transform: scale(0.9); }
+        .dot.white { background: radial-gradient(circle at 30% 30%, #fff, #bbb); transform: scale(0.9); }
+        
+        /* QR Mode */
+        .mode-qr .dot { border-radius: 0%; transform: scale(1); box-shadow: none; background: #222; }
+        .mode-qr .dot.active { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+        .mode-qr .dot.finder { background: #fff; box-shadow: 0 0 15px #fff; z-index: 2; }
     </style>
 </head>
 <body>
 
-    <button id="init-btn" onclick="startShow()">START EXPERIENCE</button>
+    <div id="start-overlay"><button id="start-btn" onclick="initSystem()">INITIALIZE SYSTEM</button></div>
+    <div id="debug">SYNC: <span id="sync-val">IDLE</span></div>
 
-    <div id="video-overlay">
-        <video id="promo-video" playsinline>
+    <div id="video-layer">
+        <video id="sync-video" playsinline webkit-playsinline preload="auto">
             <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
         </video>
     </div>
 
     <div class="reveal">
         <div class="slides">
-            <section>
-                <div id="grid" class="morph-container"></div>
-            </section>
-            
-            <section>
-                <h2>REED-SOLOMON</h2>
-                <p class="fragment fade-up">Self-Healing Data</p>
-            </section>
-
-            <section>
-                <h3>WATCH THE VIDEO</h3>
-            </section>
-
-            <section>
-                <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
-                              ar ar-modes="webxr scene-viewer quick-look" 
-                              camera-controls auto-rotate 
-                              style="width: 100%; height: 60vh;">
-                </model-viewer>
+            <section><div id="grid" class="morph-container"></div></section> <section><h2>SYNC ACTIVE</h2></section> <section> <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar camera-controls style="width:100vw; height:80vh;"></model-viewer>
             </section>
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
-    <script src="config.js"></script> <script>
-        // Init Reveal
-        const deck = new Reveal();
-        deck.initialize({ controls: false, progress: false, transition: 'fade' });
+    <script src="config.js"></script>
 
-        // Grid Aufbau
+    <script>
+        // 1. SETUP REVEAL
+        const deck = new Reveal();
+        deck.initialize({ controls: false, progress: false, transition: 'fade', disableLayout: true });
+
+        // 2. SETUP BOARD (Visuals)
         const grid = document.getElementById('grid');
         const dots = [];
-        for(let i=0; i<225; i++) { // 15x15 Grid
-            let d = document.createElement('div');
-            d.className = 'dot';
-            grid.appendChild(d);
-            dots.push(d);
+        for(let i=0; i<225; i++) {
+            let d = document.createElement('div'); d.className = 'dot hidden';
+            grid.appendChild(d); dots.push(d);
         }
 
-        function renderState(state) {
-            const vidOverlay = document.getElementById('video-overlay');
-            const vid = document.getElementById('promo-video');
-
-            // Reset Video wenn nicht gebraucht
-            if(state !== 'video') {
-                vidOverlay.classList.remove('show');
-                vid.pause();
+        function renderVisuals(mode) {
+            const vLayer = document.getElementById('video-layer');
+            const vid = document.getElementById('sync-video');
+            
+            // Video Layer Management
+            if(mode === 'video') {
+                vLayer.classList.add('active');
+            } else {
+                vLayer.classList.remove('active');
+                vid.pause(); // Video stoppen wenn nicht aktiv
+                currentSyncStart = 0; // Sync Engine pausieren
             }
 
-            if (state === 'go') {
+            // Board Logic
+            if(mode === 'go') {
                 grid.classList.remove('mode-qr');
-                dots.forEach(d => {
-                    d.className = Math.random() > 0.5 ? 'dot black' : 'dot white';
-                });
+                dots.forEach(d => d.className = Math.random()>0.5 ? 'dot black' : 'dot white');
             } 
-            else if (state === 'qr') {
+            else if(mode === 'qr') {
                 grid.classList.add('mode-qr');
                 dots.forEach((d, i) => {
-                    // Simuliere QR Finder Patterns in Ecken
-                    let x = i % 15; let y = Math.floor(i / 15);
+                    let x=i%15, y=Math.floor(i/15);
                     let isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
-                    
-                    if(isFinder) d.className = 'dot finder';
-                    else d.className = Math.random() > 0.6 ? 'dot active' : 'dot';
+                    d.className = isFinder ? 'dot finder' : (Math.random()>0.6 ? 'dot active' : 'dot');
                 });
-            }
-            else if (state === 'video') {
-                vidOverlay.classList.add('show');
-                vid.currentTime = 0;
-                vid.play();
             }
         }
 
-        // PubNub Setup
+        // 3. HIGH PERFORMANCE SYNC ENGINE
+        const video = document.getElementById("sync-video");
+        const statusVal = document.getElementById("sync-val");
         let pubnub;
-        function startShow() {
-            document.getElementById('init-btn').style.display = 'none';
-            renderState('go'); // Startzustand
+        let serverTimeOffset = 0;
+        let currentSyncStart = 0; // Timestamp wann das Video gestartet wurde
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+        async function initSystem() {
+            document.getElementById("start-overlay").style.display = 'none';
+            // Unlock Audio Context
+            video.muted = true; 
+            try { await video.play(); video.pause(); video.currentTime = 0; video.muted = false; } catch(e){}
+
+            renderVisuals('go'); // Start State
+
+            pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "viewer_" + Math.random() });
             
-            pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "viewer" });
+            // Time Calibration
+            const res = await pubnub.time();
+            serverTimeOffset = Math.floor(res.timetoken / 10000) - Date.now();
+            console.log("Time Offset:", serverTimeOffset);
+
             pubnub.addListener({
-                message: function(m) {
-                    console.log("Empfange:", m);
-                    // 1. Slide wechseln
-                    if(m.message.indexh !== undefined) deck.slide(m.message.indexh, m.message.indexv);
+                message: (m) => {
+                    const msg = m.message;
                     
-                    // 2. Effekt ausführen
-                    if(m.message.action) renderState(m.message.action);
+                    // Slide Navigation
+                    if(msg.slideIndex !== undefined) deck.slide(msg.slideIndex);
+                    
+                    // Visual Action
+                    if(msg.action) renderVisuals(msg.action);
+
+                    // Sync Signal
+                    if(msg.action === 'video' && msg.startTime) {
+                        currentSyncStart = msg.startTime;
+                        // Sofortiger Startversuch für Responsiveness
+                        syncLoop(true); 
+                    }
                 }
             });
             pubnub.subscribe({ channels: [My_Channel_Name] });
+
+            // Start Sync Heartbeat
+            setInterval(() => syncLoop(false), 200);
+        }
+
+        function syncLoop(force) {
+            // Nur syncen, wenn wir im Video-Modus sind und eine Startzeit haben
+            if (!currentSyncStart || !document.getElementById('video-layer').classList.contains('active')) return;
+
+            const now = Date.now() + serverTimeOffset;
+            const appleComp = isIOS ? 350 : 0; // iOS Buffer Kompensation
+            
+            // Soll-Zeit berechnen: (Jetzt - Startzeit) = Wie lange läuft das Video schon?
+            let targetTime = (now - (currentSyncStart - appleComp)) / 1000;
+
+            if (targetTime < 0) targetTime = 0; // Video sollte noch nicht laufen
+            
+            const diff = targetTime - video.currentTime;
+            statusVal.innerText = Math.round(diff * 1000) + "ms";
+
+            // Logic aus deinem File:
+            if (force || Math.abs(diff) > 0.6) {
+                // Harter Sprung bei großem Drift
+                video.currentTime = targetTime;
+                video.playbackRate = 1.0;
+            } else if (Math.abs(diff) > 0.05) {
+                // Sanfter Pitch wenn Drift klein
+                video.playbackRate = diff > 0 ? 1.15 : 0.85; 
+            } else {
+                video.playbackRate = 1.0;
+            }
+
+            if (video.paused) {
+                video.play().catch(e => console.log("Autoplay blockiert", e));
+            }
         }
     </script>
 </body>
