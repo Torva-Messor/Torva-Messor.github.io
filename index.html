@@ -18,6 +18,16 @@
         }
         body { background: var(--bg); overflow: hidden; font-family: 'Inter', sans-serif; margin: 0; }
 
+        /* --- BACKGROUND LAYER (GRID) --- */
+        /* Das Grid liegt nun HINTER den Slides, damit es über mehrere Folien sichtbar bleibt */
+        #background-layer {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            display: flex; justify-content: center; align-items: center;
+            z-index: 1; /* Hinter Reveal (Standard ist z-index auto, Reveal ist höher) */
+            pointer-events: none;
+        }
+
         /* --- GRID STYLES --- */
         .morph-container {
             display: grid;
@@ -25,25 +35,45 @@
             grid-template-rows: repeat(15, 1fr);
             gap: 6px;
             width: 55vmin; height: 55vmin;
-            margin: 0 auto;
-            padding: 20px;
-            border-radius: 10px;
             transition: all 1s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
         .dot { width: 100%; height: 100%; transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
         /* Modi Styles */
-        .mode-go { background: var(--board-bg); box-shadow: 0 20px 60px rgba(0,0,0,0.6); gap: 2px; transform: scale(0.9); border: 1px solid #444; }
+        .mode-go { 
+            background: var(--board-bg); 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6); 
+            gap: 2px; 
+            transform: scale(0.9); 
+            border: 1px solid #444; 
+            border-radius: 4px;
+            padding: 10px;
+        }
         .mode-go .dot { border-radius: 50%; transform: scale(0.95); }
         .mode-go .dot.white { background: radial-gradient(circle at 35% 35%, #ffffff, #d0d0d0); box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
         .mode-go .dot.black { background: radial-gradient(circle at 30% 30%, #999 0%, #111 25%, #000 100%); box-shadow: 0 3px 6px rgba(0,0,0,0.8), inset 0 0 2px rgba(255,255,255,0.3); }
         .mode-go .dot.hidden { background: transparent; opacity: 0.15; transform: scale(0.1); background-color: #fff; }
 
-        .mode-qr { background: transparent; box-shadow: none; gap: 4px; transform: scale(1.1); border: none; }
+        /* QR MODE mit starkem "Aufleuchten" */
+        .mode-qr { 
+            background: transparent; 
+            box-shadow: none; 
+            gap: 4px; 
+            transform: scale(1.1); 
+            border: none; 
+            padding: 0;
+        }
         .mode-qr .dot { border-radius: 2px; transform: scale(1); }
-        .mode-qr .dot.active { background: var(--accent); box-shadow: 0 0 15px var(--accent); }
+        
+        /* Das Leuchten wird durch Box-Shadow und Farbe erzeugt */
+        .mode-qr .dot.active { 
+            background: var(--accent); 
+            box-shadow: 0 0 20px var(--accent), 0 0 40px var(--accent); /* Doppelter Glow für mehr "Licht" */
+            z-index: 10;
+        }
         .mode-qr .dot.inactive { background: rgba(255,255,255,0.05); transform: scale(0.2); border-radius: 50%; }
 
+        /* Damage / Heal */
         .mode-damage .dot.damaged { background: var(--damage) !important; box-shadow: 0 0 20px var(--damage); animation: glitch 0.3s infinite; }
         .mode-heal .dot.active { transition: background 0.5s; background: var(--heal) !important; box-shadow: 0 0 20px var(--heal); }
 
@@ -54,23 +84,18 @@
             100% { opacity: 1; transform: translate(0,0) scale(1); }
         }
 
-        /* --- VIDEO OVERLAY (FIXED MOBILE ISSUE) --- */
+        /* --- VIDEO OVERLAY --- */
         #video-overlay {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
             background: #000;
-            z-index: 5000; /* Über den Slides */
+            z-index: 5000;
             display: flex; justify-content: center; align-items: center;
-            opacity: 0; pointer-events: none; /* Unsichtbar und klick-durchlässig wenn inaktiv */
+            opacity: 0; pointer-events: none;
             transition: opacity 0.5s ease;
         }
-        #video-overlay.active {
-            opacity: 1; pointer-events: all;
-        }
-        video { 
-            width: 100%; height: 100%; 
-            object-fit: contain; /* Video behält Format, schwarze Balken möglich */
-        }
+        #video-overlay.active { opacity: 1; pointer-events: all; }
+        video { width: 100%; height: 100%; object-fit: contain; }
 
         /* --- AR & UI --- */
         model-viewer { width: 100%; height: 80vh; margin-top: 5vh; --poster-color: transparent; }
@@ -79,6 +104,10 @@
         #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; transition: opacity 0.5s; }
         #btn-start { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 20px 50px; font-size: 1.2rem; border-radius: 50px; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; transition: 0.3s; }
         #btn-start:hover { background: var(--accent); color: #000; box-shadow: 0 0 30px var(--accent); }
+
+        /* REVEAL FIXES */
+        .reveal { z-index: 2; } /* Reveal liegt über dem Grid-Background */
+        .reveal .slides section { background: transparent !important; } /* Slides müssen transparent sein */
     </style>
 </head>
 <body>
@@ -91,17 +120,19 @@
         </video>
     </div>
 
+    <div id="background-layer">
+        <div id="grid" class="morph-container mode-go"></div>
+    </div>
+
     <div class="reveal">
         <div class="slides">
             
             <section data-auto-animate data-background-transition="zoom">
-                <h3 id="morph-title" style="margin-bottom: 40px; opacity: 0.7; font-weight: 300; letter-spacing: 4px;">ORIGIN</h3>
-                <div id="grid" class="morph-container mode-go"></div>
+                <h3 id="morph-title" style="margin-bottom: 55vh; opacity: 0.7; font-weight: 300; letter-spacing: 4px; text-shadow: 0 2px 10px #000;">ORIGIN</h3>
             </section>
 
             <section data-auto-animate data-background-transition="zoom">
-                <h3 style="letter-spacing: 5px; color: #fff;">REED-SOLOMON</h3>
-                <p style="color:var(--accent); font-size: 1rem; font-family: monospace;">Reconstructing Data Stream...</p>
+                <p style="margin-top: 55vh; color:var(--accent); font-size: 0.8rem; font-family: monospace; opacity: 0.8;">[ MATRIX DECODED ]</p>
             </section>
 
             <section data-background="#000">
@@ -126,7 +157,12 @@
     <script>
         // Init Reveal
         const deck = new Reveal();
-        deck.initialize({ controls: false, progress: false, center: true, transition: 'fade', keyboard: false, touch: false, scroll: false, help: false, mouseWheel: false });
+        deck.initialize({ 
+            controls: false, progress: false, center: true, 
+            transition: 'fade', keyboard: false, touch: false, 
+            scroll: false, help: false, mouseWheel: false,
+            backgroundTransition: 'none' 
+        });
 
         // --- GRID & ANIMATION VARIABLES ---
         const grid = document.getElementById('grid');
@@ -147,7 +183,10 @@
 
         function renderGo() {
             clearClasses(); grid.classList.add('mode-go');
-            document.getElementById('morph-title').innerText = "1992: THE ORIGIN";
+            // Titel auf Slide 1 zurücksetzen
+            const title = document.getElementById('morph-title');
+            if(title) title.innerText = "1992: THE ORIGIN";
+            
             dots.forEach(d => {
                 d.className = 'dot'; 
                 let r = Math.random();
@@ -159,15 +198,21 @@
 
         function renderQR() {
             clearClasses(); grid.classList.add('mode-qr');
-            document.getElementById('morph-title').innerText = "THE MATRIX";
+            
+            // Zufälliges Pattern für QR
             dots.forEach((d, i) => {
                 d.className = 'dot';
                 const x = i % gridSize;
                 const y = Math.floor(i / gridSize);
+                // Finder Patterns (die großen Quadrate in den Ecken)
                 const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
                 const isHollow = (x===1||x===2) && (y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
-                if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) d.classList.add('active');
-                else d.classList.add('inactive');
+                
+                if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) {
+                    d.classList.add('active');
+                } else {
+                    d.classList.add('inactive');
+                }
             });
         }
 
@@ -182,63 +227,49 @@
             setTimeout(() => { grid.classList.remove('mode-heal'); }, 1200);
         }
 
-        // --- VIDEO SYNC LOGIC (The Fix) ---
+        // --- VIDEO LOGIC ---
         function stopVideo() {
             const v = document.getElementById('main-video');
             const overlay = document.getElementById('video-overlay');
-            
-            overlay.classList.remove('active'); // Overlay ausblenden
+            overlay.classList.remove('active');
             v.pause();
         }
 
         function playSyncedVideo(serverStartTime) {
             const v = document.getElementById('main-video');
             const overlay = document.getElementById('video-overlay');
-            
-            // 1. Overlay sichtbar machen
             overlay.classList.add('active');
-
-            // 2. Latenz berechnen (Wie viel Zeit ist seit dem Klick vergangen?)
             const now = Date.now();
-            // Latenz in Sekunden
             const latencySeconds = (now - serverStartTime) / 1000;
-            
-            console.log("Sync latency:", latencySeconds);
-
-            // 3. Wenn Latenz positiv (normal), Video vorspulen
-            if (latencySeconds > 0) {
-                v.currentTime = latencySeconds;
-            } else {
-                v.currentTime = 0;
-            }
-
-            // 4. Abspielen
-            v.muted = false; // Versuch Sound einzuschalten
-            v.play().catch(e => {
-                console.warn("Auto-Play blocked. Trying muted.", e);
-                v.muted = true;
-                v.play();
-            });
+            if (latencySeconds > 0) v.currentTime = latencySeconds;
+            else v.currentTime = 0;
+            v.muted = false;
+            v.play().catch(e => { v.muted = true; v.play(); });
         }
+
+        // --- AUTOMATIC TRANSITIONS ---
+        // Wenn sich die Slide ändert, passe das Grid automatisch an
+        deck.on('slidechanged', event => {
+            // event.indexh ist der horizontale Slide-Index (0, 1, 2, 3)
+            if (event.indexh === 0) {
+                renderGo(); // Slide 1 -> GO Brett
+            } else if (event.indexh === 1) {
+                renderQR(); // Slide 2 -> QR Code Morph
+            } else if (event.indexh === 2) {
+                // Video Slide - Grid optional ausblenden oder lassen
+            }
+        });
 
         // --- INITIALIZATION ---
         function initApp() {
-            // UI Aufräumen
             document.getElementById('start-overlay').style.opacity = '0';
             setTimeout(() => { document.getElementById('start-overlay').style.display = 'none'; }, 500);
             renderGo();
 
-            // iOS HACK: Video-Engine aufwärmen
-            // Wir spielen das Video kurz an und pausieren sofort.
-            // Das sagt dem iPhone: "User hat interagiert, Video darf später Sound abspielen"
+            // iOS Video warmup
             const v = document.getElementById('main-video');
-            v.play().then(() => {
-                v.pause();
-                v.currentTime = 0;
-            }).catch((e) => console.log("Silent init failed", e));
+            v.play().then(() => { v.pause(); v.currentTime = 0; }).catch((e) => console.log("Silent init failed", e));
 
-
-            // PubNub Setup
             const pubnub = new PubNub({ 
                 subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', 
                 userId: "viewer_" + Math.floor(Math.random() * 1000)
@@ -247,23 +278,18 @@
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
-
-                    // Slide Navigation
+                    
                     if(msg.slide !== undefined) {
                         deck.slide(msg.slide);
-                        // Wenn wir NICHT im Video-Modus sein sollen, Video sicherheitshalber stoppen
-                        if (msg.slide !== 2) { 
-                            stopVideo();
-                        }
+                        if (msg.slide !== 2) stopVideo();
                     }
 
-                    // Aktionen
+                    // Manuelle Actions (falls nötig, aber Slide-Wechsel macht es jetzt automatisch)
                     if(msg.action === "morph_go") renderGo();
                     if(msg.action === "morph_qr") renderQR();
                     if(msg.action === "damage") renderDamage();
                     if(msg.action === "heal") renderHeal();
                     
-                    // Video Sync
                     if(msg.action === "play_video" && msg.timestamp) {
                         playSyncedVideo(msg.timestamp);
                     }
