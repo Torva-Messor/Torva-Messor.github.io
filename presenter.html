@@ -2,24 +2,43 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>PRESENTER - Master Control</title>
+    <title>PRESENTER - Wissenschaftswoche</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
     <style>
-        #p-status { position: fixed; top: 0; left: 0; width: 100%; background: #222; color: white; padding: 10px; z-index: 100; text-align: center; font-family: sans-serif; border-bottom: 2px solid #2196F3; }
-        .reveal { margin-top: 50px; }
+        #p-status { position: fixed; top: 0; left: 0; width: 100%; background: #222; color: white; padding: 15px; z-index: 100; text-align: center; font-family: sans-serif; font-weight: bold; }
+        .reveal { margin-top: 60px; }
+        .slide-preview { font-size: 0.5em; color: #555; }
     </style>
 </head>
 <body>
 
-    <div id="p-status">Status: <span id="st-txt" style="color:orange">Verbinde...</span></div>
+    <div id="p-status">STATUS: <span id="st-txt" style="color:orange">Verbinde...</span></div>
 
     <div class="reveal">
         <div class="slides">
-            <section><h1>Folie 1</h1><p>Startseite</p></section>
-            <section><h1>Folie 2</h1><p>Schach + Audio-Sync</p></section>
-            <section><h1>Folie 3</h1><p>Video-Sync (Vollbild)</p></section>
-            <section><h1>Folie 4</h1><p>AR-Modell Ansicht</p></section>
+            <section><h1>0. Start</h1></section>
+            <section><h1>1. Definition</h1><p>Binär / Physisch</p></section>
+            <section>
+                <h1>2. Struktur</h1>
+                <p>Position / Ausrichtung (Klick für Animationen!)</p>
+                <div class="fragment">1. Position</div>
+                <div class="fragment">2. Ausrichtung</div>
+                <div class="fragment">3. Timing</div>
+            </section>
+            <section><h1>3. Fehlerkorrektur</h1><p>Reed-Solomon</p></section>
+            <section><h1>4. Level (30%)</h1><p>High Redundancy</p></section>
+            <section><h1>5. Geschichte</h1><p>1992 / Go Brett</p></section>
+            
+            <section style="background: #e0f7fa;">
+                <h1>6. VIDEO FEATURE</h1>
+                <p style="color:red;">SYNC STARTET AUTOMATISCH</p>
+            </section>
+            
+            <section style="background: #f3e5f5;">
+                <h1>7. AR FEATURE</h1>
+                <p>WebXR Modell</p>
+            </section>
         </div>
     </div>
 
@@ -29,7 +48,7 @@
 
     <script>
         const deck = new Reveal();
-        deck.initialize({ controls: true, progress: true, hash: true });
+        deck.initialize({ controls: true, progress: true, hash: true, fragmentInURL: false });
         const statusTxt = document.getElementById("st-txt");
 
         const pubnub = new PubNub({
@@ -41,7 +60,7 @@
         pubnub.addListener({
             status: (s) => {
                 if (s.category === "PNConnectedCategory") {
-                    statusTxt.innerText = "BEREIT (LIVE)";
+                    statusTxt.innerText = "LIVE & VERBUNDEN";
                     statusTxt.style.color = "#00ff00";
                 }
             }
@@ -49,25 +68,39 @@
 
         pubnub.subscribe({ channels: [My_Channel_Name] });
 
-        deck.on('slidechanged', async (event) => {
-            const idx = event.indexh;
+        // Funktion zum Senden des Status
+        async function broadcastState() {
+            const state = deck.getState();
+            const idx = state.indexh;
+            const frag = state.indexf; // Fragment Index (für Animationen auf Slide 2)
+            
             let startT = null;
 
-            // Sync-Zeitstempel für Folie 2 (Audio) ODER Folie 3 (Video)
-            if (idx === 1 || idx === 2) {
+            // Wenn wir auf Slide 6 (Video) sind, generieren wir den Zeitstempel
+            if (idx === 6) {
                 try {
                     const t = await pubnub.time();
-                    // 500ms Puffer für Netzwerk-Verzögerung
-                    startT = Math.floor(t.timetoken / 10000) + 500; 
-                } catch(e) { startT = Date.now() + 500; }
+                    // 800ms Puffer damit alle Geräte bereit sind
+                    startT = Math.floor(t.timetoken / 10000) + 800; 
+                } catch(e) { startT = Date.now() + 800; }
             }
 
             pubnub.publish({
                 channel: My_Channel_Name,
-                message: { index: idx, startTime: startT },
+                message: { 
+                    index: idx, 
+                    fragment: frag, // Sendet auch, welcher Teil der Slide sichtbar ist
+                    startTime: startT 
+                },
                 storeInHistory: true
             });
-        });
+        }
+
+        // Event Listener für Slide-Wechsel UND Fragment-Wechsel (Animationen)
+        deck.on('slidechanged', broadcastState);
+        deck.on('fragmentshown', broadcastState);
+        deck.on('fragmenthidden', broadcastState);
+
     </script>
 </body>
 </html>
