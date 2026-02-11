@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva High-Performance Sync</title>
+    <title>Torva Sync & AR Fix</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
@@ -22,40 +22,50 @@
             padding: 22px 60px; background: #2196F3; color: white; border: none; 
             border-radius: 50px; font-size: 22px; font-weight: bold; cursor: pointer; 
             box-shadow: 0 0 20px rgba(33, 150, 243, 0.4);
-            transition: transform 0.1s;
         }
-        #start-btn:active { transform: scale(0.95); }
 
-        /* Layout Fixes */
+        /* Layout */
         .reveal, .slides, .fs-container { width: 100vw !important; height: 100vh !important; }
-        .fs-container { display: flex; justify-content: center; align-items: center; background: #000; }
+        .fs-container { display: flex; justify-content: center; align-items: center; background: #000; position: relative; }
         
         .fs-media { 
             width: 100% !important; height: 100% !important; 
             object-fit: contain; 
             background: black;
-            /* Hardware Acceleration erzwingen */
-            transform: translateZ(0); 
             -webkit-transform: translateZ(0);
         }
 
-        #status { 
-            position: fixed; top: 10px; left: 10px; color: rgba(255,255,255,0.4); 
-            font-family: monospace; font-size: 12px; z-index: 9999; pointer-events: none;
-            background: rgba(0,0,0,0.5); padding: 4px; border-radius: 4px;
+        /* DER AR KNOPF */
+        .ar-button { 
+            background-color: #ffffff;
+            border-radius: 30px;
+            border: none;
+            position: absolute;
+            bottom: 60px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 18px 36px;
+            font-weight: bold;
+            font-family: sans-serif;
+            color: #4285f4;
+            z-index: 1000;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
         }
 
-        .ar-button { 
-            background: white; border-radius: 30px; border: none; padding: 16px 32px;
-            position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
-            font-weight: bold; color: #4285f4; z-index: 1000;
+        #status { 
+            position: fixed; top: 10px; left: 10px; color: rgba(255,255,255,0.3); 
+            font-family: monospace; font-size: 10px; z-index: 9999; pointer-events: none;
         }
     </style>
 </head>
 <body>
 
     <div id="start-overlay">
-        <button id="start-btn" onclick="initViewer()">START SESSION</button>
+        <button id="start-btn" onclick="initViewer()">START</button>
     </div>
 
     <div id="status">SYNC: <span id="sync-val">IDLE</span></div>
@@ -82,8 +92,20 @@
 
             <section data-background-color="#000">
                 <div class="fs-container">
-                    <model-viewer class="fs-media" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer quick-look" camera-controls interaction-prompt="none">
-                        <button slot="ar-button" class="ar-button">AR STARTEN</button>
+                    <model-viewer 
+                        id="ar-element"
+                        class="fs-media" 
+                        src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
+                        ar 
+                        ar-modes="webxr scene-viewer quick-look" 
+                        camera-controls 
+                        interaction-prompt="none"
+                        shadow-intensity="1">
+                        
+                        <button slot="ar-button" class="ar-button">
+                             📷 IM RAUM ANSEHEN
+                        </button>
+                        
                     </model-viewer>
                 </div>
             </section>
@@ -100,144 +122,61 @@
         
         const audio = document.getElementById("sync-audio");
         const video = document.getElementById("sync-video");
-        const statusEl = document.getElementById("sync-val");
+        const status = document.getElementById("sync-val");
 
         let serverTimeOffset = 0;
         let currentStartTime = 0;
-        let isRunning = false;
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
         async function initViewer() {
             document.getElementById("start-overlay").style.display = 'none';
             
-            // --- iOS UNLOCK STRATEGIE ---
-            // Wir "touchen" beide Medien einmal, damit iOS die Wiedergabe später erlaubt
-            const unlockMedia = async (el) => {
+            const unlock = async (el) => {
                 try {
-                    el.muted = true; 
-                    await el.play(); 
-                    el.pause(); 
-                    el.currentTime = 0;
-                    el.muted = false; // Ton wieder an für den echten Start
-                } catch(e) { console.warn("Unlock warning:", e); }
+                    el.muted = true; await el.play(); el.pause(); el.currentTime = 0; el.muted = false;
+                } catch(e) {}
             };
-            
-            await Promise.all([unlockMedia(audio), unlockMedia(video)]);
+            await unlock(audio); await unlock(video);
 
-            // --- PUBNUB SETUP ---
-            // Stelle sicher, dass Pub_Nub_api_Subscribe in config.js definiert ist
-            const pubnub = new PubNub({ 
-                subscribeKey: Pub_Nub_api_Subscribe, 
-                userId: "user_" + Math.random().toString(36).substring(7) 
-            });
-
-            // Zeitsynchronisation (NTP-ähnlich)
-            const t1 = Date.now();
+            const pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "u_" + Math.random().toString(36).substring(7) });
             const res = await pubnub.time();
-            const now = Date.now();
-            // Latenzkompensation
-            serverTimeOffset = Math.floor(res.timetoken / 10000) - (now - (now - t1) / 2);
+            serverTimeOffset = Math.floor(res.timetoken / 10000) - Date.now();
 
             pubnub.addListener({
                 message: (m) => {
-                    const msg = m.message;
-                    if (msg.index !== undefined) {
-                        // Slide wechseln
-                        deck.slide(msg.index);
-                        currentStartTime = msg.startTime;
-                        
-                        // Einmaliger harter Reset beim Folienwechsel (hier ist Ruckeln okay)
+                    if (m.message.index !== undefined) {
+                        deck.slide(m.message.index);
+                        currentStartTime = m.message.startTime;
                         sync(true);
                     }
                 }
             });
-            
-            // Stelle sicher, dass My_Channel_Name in config.js definiert ist
             pubnub.subscribe({ channels: [My_Channel_Name] });
 
-            isRunning = true;
-            // Wir nutzen requestAnimationFrame für 60fps Checks statt setInterval
-            requestAnimationFrame(loop);
+            setInterval(() => sync(false), 200);
         }
 
-        function loop() {
-            if(isRunning) {
-                sync(false);
-                requestAnimationFrame(loop);
-            }
-        }
-
-        function sync(forceJump) {
+        function sync(force) {
             const idx = deck.getState().indexh;
-            // Slide 1 = Audio, Slide 2 = Video. Sonst null.
             const el = (idx === 2) ? video : (idx === 1 ? audio : null);
-            
-            if (!el || !currentStartTime) {
-                statusEl.innerText = "WAITING";
-                return;
-            }
+            if (!el || !currentStartTime) return;
 
-            // Berechne die Zielzeit: (Aktuelle Serverzeit - Startzeit)
-            const serverNow = Date.now() + serverTimeOffset;
-            const targetTime = (serverNow - currentStartTime) / 1000;
-            const diff = targetTime - el.currentTime;
+            const target = ((Date.now() + serverTimeOffset) - currentStartTime) / 1000;
+            const diff = target - el.currentTime;
 
-            // 1. Video/Audio ist zu Ende?
-            if (targetTime >= el.duration) {
-                if(!el.paused) el.pause();
-                statusEl.innerText = "ENDED";
-                return;
-            }
-
-            // 2. Playback sicherstellen
-            if (el.paused && targetTime > 0) {
-                el.play().catch(e => {
-                    console.log("Autoplay prevented, trying muted");
-                    el.muted = true;
-                    el.play();
-                });
-            }
-
-            // --- HAUPT SYNC LOGIK (Der Apple Fix) ---
-
-            // A. Harter Sprung (Nur im Notfall oder beim Start)
-            // Wenn wir mehr als 2 Sekunden daneben liegen, müssen wir springen.
-            if (forceJump || Math.abs(diff) > 2.0) {
-                el.currentTime = targetTime;
+            if (force || Math.abs(diff) > 1.5) {
+                el.currentTime = target;
                 el.playbackRate = 1.0;
-                statusEl.innerText = "JUMP";
-                return;
+            } else if (Math.abs(diff) > 0.05) { 
+                el.playbackRate = diff > 0 ? 1.08 : 0.92;
+            } else {
+                el.playbackRate = 1.0;
             }
 
-            // B. Deadzone (Hier liegt der Schlüssel zum flüssigen Bild!)
-            // Wenn wir weniger als 0.05s (50ms) Abweichung haben -> NICHTS TUN.
-            // Das menschliche Auge merkt das nicht, und Safari liebt es.
-            if (Math.abs(diff) < 0.05) {
-                if (el.playbackRate !== 1.0) el.playbackRate = 1.0;
-                statusEl.innerText = "LOCKED";
-                return;
+            if (el.paused && target > 0 && target < el.duration) {
+                el.play().catch(() => { el.muted = true; el.play(); });
             }
-
-            // C. Soft Drift (Geschwindigkeit anpassen)
-            // Wir sind zwischen 0.05s und 2.0s Abweichung.
-            // Wir ändern die Geschwindigkeit sanft.
-            
-            // Einfacher P-Regler: Fehler * Verstärkung
-            // Wenn wir hinterherhinken (diff > 0), Rate > 1.
-            // Wenn wir voraus sind (diff < 0), Rate < 1.
-            let targetRate = 1.0 + (diff * 0.8);
-
-            // Begrenzung (Clamping):
-            // Nicht schneller als 1.15x und nicht langsamer als 0.85x
-            // Sonst klingt Audio komisch ("Schlumpfstimme" oder Zeitlupe)
-            targetRate = Math.min(Math.max(targetRate, 0.85), 1.15);
-
-            // Glättung: Ändere playbackRate nur, wenn die Änderung signifikant ist
-            // (verhindert Zittern der Rate)
-            if (Math.abs(el.playbackRate - targetRate) > 0.01) {
-                el.playbackRate = targetRate;
-            }
-
-            statusEl.innerText = `DRIFT ${Math.round(diff*1000)}ms | x${targetRate.toFixed(2)}`;
+            status.innerText = Math.round(diff*1000) + "ms";
         }
     </script>
 </body>
