@@ -2,9 +2,8 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Viewer - Full Presenter Control</title>
+    <title>Torva Viewer - Synchronized Edition</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
@@ -17,27 +16,19 @@
             --board-bg: #2b2b2b;
             --matrix-green: #0f0;
         }
+        body { background: var(--bg); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
 
-        body { 
-            background: var(--bg); 
-            overflow: hidden; 
-            font-family: 'Courier New', monospace; 
-            margin: 0;
-            /* Verhindert Markierungen und System-Gesten des Users */
-            user-select: none;
-            touch-action: none;
-        }
-
-        /* Hintergrund-Layer für Go/QR Grid */
+        /* Hintergrund für Morphing Grid */
         #background-layer {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
             display: flex; justify-content: center; align-items: center;
             z-index: 1; 
             pointer-events: none;
-            transition: opacity 0.6s ease-in-out;
+            transition: opacity 0.4s ease;
         }
 
+        /* Das Grid (15x15) */
         .morph-container {
             display: grid;
             grid-template-columns: repeat(15, 1fr);
@@ -45,76 +36,60 @@
             gap: 6px;
             width: 55vmin; height: 55vmin;
         }
+        .dot { width: 100%; height: 100%; transition: background 0.3s, transform 0.3s; }
 
-        .dot { width: 100%; height: 100%; transition: all 0.4s ease; }
-
-        /* GO-Modus Styles */
+        /* GO BOARD Modus */
         .mode-go { background: var(--board-bg); gap: 2px; padding: 10px; border-radius: 4px; }
         .mode-go .dot { border-radius: 50%; transform: scale(0.9); }
         .mode-go .dot.white { background: #fff; }
         .mode-go .dot.black { background: #000; }
         .mode-go .dot.hidden { opacity: 0.1; }
 
-        /* QR-Modus Styles */
+        /* QR CODE Modus */
         .mode-qr { background: transparent; gap: 4px; }
         .mode-qr .dot { border-radius: 2px; }
         .mode-qr .dot.active { background: var(--accent); }
         .mode-qr .dot.inactive { background: rgba(255,255,255,0.05); transform: scale(0.2); }
         
-        /* DATA CORRUPTION Visuals */
+        /* DATA CORRUPTION (Nur Datenbits, keine Finder Patterns) */
         .mode-qr .dot.damaged { 
             background: var(--damage) !important; 
             box-shadow: 0 0 15px var(--damage); 
-            transform: scale(0.95);
+            transform: scale(0.9) rotate(45deg); /* Visueller Glitch-Effekt */
         }
 
-        /* VIDEO OVERLAY - Komplett gesperrt für User-Interaktion */
+        /* Video Overlay - Vollbild */
         #video-overlay { 
             position: fixed; inset: 0; background: #000; z-index: 50; 
             display: flex; justify-content: center; align-items: center;
-            opacity: 0; transition: opacity 0.8s ease;
-            pointer-events: none; /* User kann nicht klicken/pausieren */
+            opacity: 0; pointer-events: none; transition: opacity 0.5s; 
         }
         #video-overlay.active { opacity: 1; pointer-events: auto; }
+        video { width: 100%; height: 100%; object-fit: contain; }
+
+        /* AR Slide Styling */
+        .ar-slide { background-color: #1a1a1a !important; }
+        model-viewer { width: 100%; height: 60vh; --poster-color: transparent; }
         
-        video { 
-            width: 100%; height: 100%; object-fit: contain; 
-            pointer-events: none; /* Verhindert Rechtsklick und Play/Pause-Interaktion */
-        }
-
-        #start-overlay { 
-            position: fixed; inset: 0; background: #000; z-index: 10000; 
-            display: flex; justify-content: center; align-items: center; 
-        }
-        #btn-start { 
-            border: 1px solid var(--accent); color: var(--accent); 
-            background: transparent; padding: 20px 50px; border-radius: 50px; 
-            cursor: pointer; font-family: inherit; font-size: 1.2rem;
-        }
-
-        .reveal { z-index: 5; pointer-events: none; } /* Deaktiviert Klicks auf Slides */
-        .matrix-text { 
-            color: var(--matrix-green); font-size: 0.9rem; margin-top: 60vh; 
-            background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid var(--matrix-green); 
-            display: inline-block;
-        }
-
-        /* AR-Button ist die einzige erlaubte Interaktion auf der letzten Slide */
         .ar-trigger-button {
-            pointer-events: auto;
             background: var(--accent); color: black; border: none; padding: 15px 30px;
-            font-weight: bold; border-radius: 50px; cursor: pointer;
+            font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 0 15px var(--accent);
         }
+
+        /* Start Button overlay */
+        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
+        #btn-start { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 20px 50px; border-radius: 50px; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; }
+        
+        .reveal { z-index: 5; }
+        .matrix-text { color: var(--matrix-green); font-size: 0.9rem; margin-top: 60vh; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid var(--matrix-green); display: inline-block; }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay">
-        <button id="btn-start" onclick="initApp()">INITIALIZE VIEWER</button>
-    </div>
+    <div id="start-overlay"><button id="btn-start" onclick="initApp()">Initialize System</button></div>
 
     <div id="video-overlay">
-        <video id="main-video" playsinline webkit-playsinline preload="auto" disablePictureInPicture>
+        <video id="main-video" playsinline webkit-playsinline preload="auto">
             <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
         </video>
     </div>
@@ -126,9 +101,16 @@
     <div class="reveal">
         <div class="slides">
             <section><h2>ORIGIN</h2></section>
-            <section><div class="matrix-text" id="qr-status-text">> SYNC_READY</div></section>
-            <section data-background="#000"></section>
+            
+            <section>
+                <div class="matrix-text" id="qr-status-text">> SYNC_READY</div>
+            </section>
+            
+            <section data-background="#000">
+                </section>
+            
             <section class="ar-slide">
+                <h2 style="color: white;">DISCOVERY</h2>
                 <model-viewer id="astronaut-model" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer quick-look" camera-controls auto-rotate shadow-intensity="1">
                     <button slot="ar-button" class="ar-trigger-button">🚀 AR STARTEN</button>
                 </model-viewer>
@@ -141,18 +123,7 @@
 
     <script>
         const deck = new Reveal();
-        
-        // REVEAL KONFIGURATION: Alle User-Steuerungen deaktiviert
-        deck.initialize({ 
-            controls: false, 
-            progress: false, 
-            keyboard: false, 
-            touch: false, 
-            overview: false, 
-            help: false,
-            mouseWheel: false,
-            transition: 'fade' 
-        });
+        deck.initialize({ controls: false, progress: false, center: true, transition: 'fade' });
 
         const grid = document.getElementById('grid');
         const backgroundLayer = document.getElementById('background-layer');
@@ -161,7 +132,7 @@
         const dots = [];
         let damageStage = 0;
 
-        // Grid erzeugen
+        // Grid erzeugen (15x15 = 225 dots)
         for(let i=0; i<225; i++) {
             let d = document.createElement('div');
             d.className = 'dot';
@@ -169,18 +140,31 @@
             dots.push(d);
         }
 
-        // FACHLICHER SCHUTZ: Finder-Patterns dürfen nicht rot werden (Kritisch für QR-Funktion)
-        function isProtected(x, y) {
-            if (x <= 3 && y <= 3) return true;   // Oben Links
-            if (x >= 11 && y <= 3) return true;  // Oben Rechts
-            if (x <= 3 && y >= 11) return true;  // Unten Links
-            return false;
+        // --- FACHLICHE LOGIK ---
+        // Identifiziert Bereiche, die für die Lesbarkeit kritisch sind (Finder Patterns & Timing)
+        // Koordinaten basieren auf 15x15 Grid (0-14)
+        function isCriticalInfrastructure(x, y) {
+            // 1. Finder Patterns (Die großen Ecken)
+            // Oben Links (Bereich 0-3)
+            if (x <= 3 && y <= 3) return true;
+            // Oben Rechts (x 11-14)
+            if (x >= 11 && y <= 3) return true;
+            // Unten Links (y 11-14)
+            if (x <= 3 && y >= 11) return true;
+
+            // 2. Timing Patterns (Die Verbindungslinien)
+            // Bei einem echten QR ist dies meist Zeile 6 / Spalte 6. 
+            // Bei 15x15 nehmen wir die Mitte oder Zeile 3/4 als Annäherung. 
+            // Hier schützen wir strikt die direkten Nachbarn der Finder.
+            
+            return false; // Alles andere ist "Data Area" und darf beschädigt werden
         }
 
         function renderGo() {
             grid.className = 'morph-container mode-go';
             dots.forEach(d => {
                 d.className = 'dot';
+                d.classList.remove('damaged'); // Reset damage
                 let r = Math.random();
                 if(r > 0.8) d.classList.add('black');
                 else if(r > 0.6) d.classList.add('white');
@@ -192,9 +176,14 @@
             grid.className = 'morph-container mode-qr';
             dots.forEach((d, i) => {
                 d.className = 'dot';
+                d.classList.remove('damaged');
                 const x = i % 15; const y = Math.floor(i / 15);
+                
+                // Visuelle Konstruktion des QR Codes
                 const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
+                // "Hollow" macht die Finder Patterns hohl (Quadrat im Quadrat)
                 const isHollow = (x===1||x===2) && (y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
+                
                 if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) d.classList.add('active');
                 else d.classList.add('inactive');
             });
@@ -202,38 +191,64 @@
 
         function renderDamage() {
             damageStage++;
-            const steps = [0.08, 0.18, 0.28, 0.38, 0.50];
-            let targetRatio = steps[Math.min(damageStage - 1, 4)];
+            const steps = [0.05, 0.15, 0.25, 0.35, 0.45, 0.60]; // Prozentuale Zerstörung
+            let targetRatio = steps[Math.min(damageStage - 1, 5)];
 
+            // Filtere Dots, die aktiv sind UND NICHT zur kritischen Infrastruktur gehören
             const dataDots = dots.filter((d, i) => {
                 const x = i % 15; const y = Math.floor(i / 15);
-                return d.classList.contains('active') && !isProtected(x, y);
+                return d.classList.contains('active') && !isCriticalInfrastructure(x, y);
             });
 
-            dataDots.sort(() => 0.5 - Math.random()).forEach((d, index) => {
-                if (index < Math.floor(dataDots.length * targetRatio)) d.classList.add('damaged');
+            const shuffled = dataDots.sort(() => 0.5 - Math.random());
+            const limit = Math.floor(dataDots.length * targetRatio);
+
+            shuffled.forEach((d, index) => {
+                if (index < limit) d.classList.add('damaged');
             });
 
-            const integrity = 100 - Math.floor(targetRatio * 100);
-            document.getElementById('qr-status-text').innerHTML = `> ERROR_LEVEL: ${100-integrity}%<br>> FINDER_PATTERNS: SECURED<br>> DATA_RECOVERY: ACTIVE`;
+            // Update Status Text
+            let integrity = 100 - Math.floor(targetRatio * 100);
+            let status = integrity < 70 ? "CRITICAL" : "STABLE";
+            // Bei Reed-Solomon ist meist ab ~30% Schluss, daher Warnung ab 70% Integrität
+            document.getElementById('qr-status-text').innerHTML = 
+                `> DATA_INTEGRITY: ${integrity}%<br>> FINDER_PATTERNS: SECURED<br>> STATUS: ${status}`;
         }
 
-        // Automatische Video-Logik beim Slide-Wechsel
+        // --- SLIDE STEUERUNG ---
         deck.on('slidechanged', event => {
-            const idx = event.indexh;
-            
-            // Video Management
-            if (idx === 2) {
-                backgroundLayer.style.opacity = '0';
-                videoOverlay.classList.add('active');
-                mainVideo.currentTime = 0;
-                mainVideo.play();
-            } else {
+            const index = event.indexh;
+
+            // Slide 0: Go Board
+            if (index === 0) {
+                backgroundLayer.style.opacity = '1';
                 videoOverlay.classList.remove('active');
                 mainVideo.pause();
-                backgroundLayer.style.opacity = (idx === 3) ? '0' : '1';
-                if(idx === 0) renderGo();
-                if(idx === 1) renderQR();
+                renderGo();
+            }
+            
+            // Slide 1: QR Code
+            if (index === 1) {
+                backgroundLayer.style.opacity = '1';
+                videoOverlay.classList.remove('active');
+                mainVideo.pause();
+                renderQR();
+            }
+
+            // Slide 2: VIDEO ABPIELEN (Automatisch)
+            if (index === 2) {
+                // Hintergrund ausblenden für Fokus
+                backgroundLayer.style.opacity = '0'; 
+                videoOverlay.classList.add('active');
+                mainVideo.currentTime = 0; // Neustart oder fortsetzen
+                mainVideo.play().catch(e => console.log("Autoplay blocked usually handled by init", e));
+            }
+
+            // Slide 3: AR / Modell
+            if (index === 3) {
+                backgroundLayer.style.opacity = '0';
+                videoOverlay.classList.remove('active');
+                mainVideo.pause();
             }
         });
 
@@ -241,32 +256,36 @@
             document.getElementById('start-overlay').style.display = 'none';
             renderGo();
             
-            // Video-Vorladung um Verzögerung zu vermeiden
-            mainVideo.load();
-            mainVideo.play().then(() => mainVideo.pause());
+            // "Unlock" AudioContext für mobile Browser
+            mainVideo.play().then(() => { 
+                mainVideo.pause(); 
+                mainVideo.currentTime = 0;
+            }).catch(e => console.log("Unlock Video Error", e));
 
-            const pubnub = new PubNub({ 
-                subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', 
-                userId: "viewer_" + Math.random().toString(16).slice(2) 
-            });
-
+            // PubNub Setup
+            const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v_" + Date.now() });
+            
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
-                    // Fernsteuerung der Folien
-                    if(msg.slide !== undefined) deck.slide(msg.slide);
                     
-                    // Fernsteuerung der Effekte
+                    if(msg.slide !== undefined) {
+                        deck.slide(msg.slide);
+                        // Die Logik für Video Start/Stop liegt jetzt im 'slidechanged' Event listener oben,
+                        // das spart redundanten Code.
+                    }
                     if(msg.action === "damage") renderDamage();
                     if(msg.action === "heal") {
                         damageStage = 0;
-                        renderQR();
+                        renderQR(); // Reset to clean QR
                         document.getElementById('qr-status-text').innerHTML = "> SYNC_READY";
                     }
-                    if(msg.action === "play_video") deck.slide(2);
+                    // Optional: Falls Video direkt per Button gesteuert werden soll ohne Slide-Wechsel
+                    if(msg.action === "play_video") {
+                        deck.slide(2); // Zwinge zur Video Slide
+                    }
                 }
             });
-
             pubnub.subscribe({ channels: ['PrasiW.Woche'] });
         }
     </script>
