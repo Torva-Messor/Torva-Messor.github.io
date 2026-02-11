@@ -1,274 +1,259 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-    <meta charset="UTF-8">
-    <title>Torva Viewer - Full Presenter Control</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
-    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
+<meta charset="UTF-8">
+<title>Torva Viewer - Full Presenter Control</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-    <style>
-        :root { 
-            --accent: #00f2ff; 
-            --damage: #ff0000;
-            --bg: #050505; 
-            --board-bg: #2b2b2b;
-            --matrix-green: #0f0;
-        }
+<script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
 
-        body { 
-            background: var(--bg); 
-            overflow: hidden; 
-            font-family: 'Courier New', monospace; 
-            margin: 0;
-            /* Verhindert Markierungen und System-Gesten des Users */
-            user-select: none;
-            touch-action: none;
-        }
+<style>
+:root { 
+    --accent: #00f2ff; 
+    --damage: #ff0000;
+    --bg: #050505; 
+    --board-bg: #2b2b2b;
+    --matrix-green: #0f0;
+}
 
-        /* Hintergrund-Layer für Go/QR Grid */
-        #background-layer {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
-            display: flex; justify-content: center; align-items: center;
-            z-index: 1; 
-            pointer-events: none;
-            transition: opacity 0.6s ease-in-out;
-        }
+body { 
+    background: var(--bg); 
+    overflow: hidden; 
+    font-family: 'Courier New', monospace; 
+    margin: 0;
+    user-select: none;
+    touch-action: none;
+}
 
-        .morph-container {
-            display: grid;
-            grid-template-columns: repeat(15, 1fr);
-            grid-template-rows: repeat(15, 1fr);
-            gap: 6px;
-            width: 55vmin; height: 55vmin;
-        }
+#background-layer {
+    position: fixed;
+    inset: 0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1; 
+    pointer-events: none;
+}
 
-        .dot { width: 100%; height: 100%; transition: all 0.4s ease; }
+.morph-container {
+    display: grid;
+    grid-template-columns: repeat(15, 1fr);
+    grid-template-rows: repeat(15, 1fr);
+    gap: 6px;
+    width: 55vmin; 
+    height: 55vmin;
+    transform-style: preserve-3d;
+    perspective: 1200px;
+}
 
-        /* GO-Modus Styles */
-        .mode-go { background: var(--board-bg); gap: 2px; padding: 10px; border-radius: 4px; }
-        .mode-go .dot { border-radius: 50%; transform: scale(0.9); }
-        .mode-go .dot.white { background: #fff; }
-        .mode-go .dot.black { background: #000; }
-        .mode-go .dot.hidden { opacity: 0.1; }
+.dot { 
+    width: 100%; 
+    height: 100%; 
+    transition: all 0.4s ease; 
+}
 
-        /* QR-Modus Styles */
-        .mode-qr { background: transparent; gap: 4px; }
-        .mode-qr .dot { border-radius: 2px; }
-        .mode-qr .dot.active { background: var(--accent); }
-        .mode-qr .dot.inactive { background: rgba(255,255,255,0.05); transform: scale(0.2); }
-        
-        /* DATA CORRUPTION Visuals */
-        .mode-qr .dot.damaged { 
-            background: var(--damage) !important; 
-            box-shadow: 0 0 15px var(--damage); 
-            transform: scale(0.95);
-        }
+/* GO MODE */
+.mode-go { background: var(--board-bg); gap: 2px; padding: 10px; border-radius: 4px; }
+.mode-go .dot { border-radius: 50%; transform: scale(0.9); }
+.mode-go .dot.white { background: #fff; }
+.mode-go .dot.black { background: #000; }
+.mode-go .dot.hidden { opacity: 0.1; }
 
-        /* VIDEO OVERLAY - Komplett gesperrt für User-Interaktion */
-        #video-overlay { 
-            position: fixed; inset: 0; background: #000; z-index: 50; 
-            display: flex; justify-content: center; align-items: center;
-            opacity: 0; transition: opacity 0.8s ease;
-            pointer-events: none; /* User kann nicht klicken/pausieren */
-        }
-        #video-overlay.active { opacity: 1; pointer-events: auto; }
-        
-        video { 
-            width: 100%; height: 100%; object-fit: contain; 
-            pointer-events: none; /* Verhindert Rechtsklick und Play/Pause-Interaktion */
-        }
+/* QR MODE */
+.mode-qr { background: transparent; gap: 4px; }
+.mode-qr .dot { border-radius: 2px; }
+.mode-qr .dot.active { background: var(--accent); }
+.mode-qr .dot.inactive { background: rgba(255,255,255,0.05); transform: scale(0.2); }
+.mode-qr .dot.damaged { background: var(--damage) !important; box-shadow: 0 0 15px var(--damage); }
 
-        #start-overlay { 
-            position: fixed; inset: 0; background: #000; z-index: 10000; 
-            display: flex; justify-content: center; align-items: center; 
-        }
-        #btn-start { 
-            border: 1px solid var(--accent); color: var(--accent); 
-            background: transparent; padding: 20px 50px; border-radius: 50px; 
-            cursor: pointer; font-family: inherit; font-size: 1.2rem;
-        }
+/* FANCY MORPH */
+.morphing { animation: gridFlip 1.4s cubic-bezier(.77,0,.18,1) forwards; }
 
-        .reveal { z-index: 5; pointer-events: none; } /* Deaktiviert Klicks auf Slides */
-        .matrix-text { 
-            color: var(--matrix-green); font-size: 0.9rem; margin-top: 60vh; 
-            background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid var(--matrix-green); 
-            display: inline-block;
-        }
+@keyframes gridFlip {
+    0% { transform: rotateY(0deg) scale(1); filter: blur(0px); }
+    40% { transform: rotateY(90deg) scale(0.8); filter: blur(8px); }
+    60% { transform: rotateY(90deg) scale(0.8); filter: blur(8px); }
+    100% { transform: rotateY(180deg) scale(1); filter: blur(0px); }
+}
 
-        /* AR-Button ist die einzige erlaubte Interaktion auf der letzten Slide */
-        .ar-trigger-button {
-            pointer-events: auto;
-            background: var(--accent); color: black; border: none; padding: 15px 30px;
-            font-weight: bold; border-radius: 50px; cursor: pointer;
-        }
-    </style>
+.grid-flash { animation: flashPulse 0.6s ease; }
+
+@keyframes flashPulse {
+    0% { box-shadow: 0 0 0px var(--accent); }
+    50% { box-shadow: 0 0 40px var(--accent); }
+    100% { box-shadow: 0 0 0px var(--accent); }
+}
+
+.scan-line {
+    position: absolute;
+    width: 55vmin;
+    height: 4px;
+    background: linear-gradient(to right, transparent, var(--accent), transparent);
+    animation: scanMove 1.2s ease forwards;
+}
+
+@keyframes scanMove {
+    0% { transform: translateY(-30vmin); opacity: 1; }
+    100% { transform: translateY(30vmin); opacity: 0; }
+}
+
+.dot.highlighted {
+    outline: 3px solid #00ff00;
+    box-shadow: 0 0 20px #00ff00;
+}
+
+/* STATUS UNTEN */
+#qr-status-text {
+    position: absolute;
+    bottom: 8vh;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--matrix-green);
+    text-align: center;
+    font-size: 0.9rem;
+    background: rgba(0,0,0,0.8);
+    padding: 10px;
+    border: 1px solid var(--matrix-green);
+}
+
+/* VIDEO */
+#video-overlay { position: fixed; inset: 0; background: #000; z-index: 50; display: flex; justify-content: center; align-items: center; opacity: 0; transition: opacity 0.8s ease; pointer-events: none; }
+#video-overlay.active { opacity: 1; pointer-events: auto; }
+video { width: 100%; height: 100%; object-fit: contain; pointer-events: none; }
+
+#start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
+#btn-start { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 20px 50px; border-radius: 50px; cursor: pointer; font-size: 1.2rem; }
+
+.reveal { z-index: 5; pointer-events: none; }
+</style>
 </head>
 <body>
 
-    <div id="start-overlay">
-        <button id="btn-start" onclick="initApp()">INITIALIZE VIEWER</button>
-    </div>
+<div id="start-overlay">
+<button id="btn-start" onclick="initApp()">INITIALIZE VIEWER</button>
+</div>
 
-    <div id="video-overlay">
-        <video id="main-video" playsinline webkit-playsinline preload="auto" disablePictureInPicture>
-            <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
-        </video>
-    </div>
+<div id="video-overlay">
+<video id="main-video" playsinline preload="auto">
+<source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
+</video>
+</div>
 
-    <div id="background-layer">
-        <div id="grid" class="morph-container mode-go"></div>
-    </div>
+<div id="background-layer">
+<div id="grid" class="morph-container mode-go"></div>
+<div id="qr-status-text">> SYNC_READY</div>
+</div>
 
-    <div class="reveal">
-        <div class="slides">
-            <section><h2>ORIGIN</h2></section>
-            <section><div class="matrix-text" id="qr-status-text">> SYNC_READY</div></section>
-            <section data-background="#000"></section>
-            <section class="ar-slide">
-                <model-viewer id="astronaut-model" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer quick-look" camera-controls auto-rotate shadow-intensity="1">
-                    <button slot="ar-button" class="ar-trigger-button">🚀 AR STARTEN</button>
-                </model-viewer>
-            </section>
-        </div>
-    </div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
+<script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
-    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
+<script>
+const deck = new Reveal();
+deck.initialize({ controls:false, progress:false, keyboard:false, touch:false, transition:'fade' });
 
-    <script>
-        const deck = new Reveal();
-        
-        // REVEAL KONFIGURATION: Alle User-Steuerungen deaktiviert
-        deck.initialize({ 
-            controls: false, 
-            progress: false, 
-            keyboard: false, 
-            touch: false, 
-            overview: false, 
-            help: false,
-            mouseWheel: false,
-            transition: 'fade' 
-        });
+const grid = document.getElementById('grid');
+const dots = [];
+let damageStage = 0;
+let currentHighlight = null;
 
-        const grid = document.getElementById('grid');
-        const backgroundLayer = document.getElementById('background-layer');
-        const mainVideo = document.getElementById('main-video');
-        const videoOverlay = document.getElementById('video-overlay');
-        const dots = [];
-        let damageStage = 0;
+for(let i=0;i<225;i++){
+    const d=document.createElement('div');
+    d.className='dot';
+    grid.appendChild(d);
+    dots.push(d);
+}
 
-        // Grid erzeugen
-        for(let i=0; i<225; i++) {
-            let d = document.createElement('div');
-            d.className = 'dot';
-            grid.appendChild(d);
-            dots.push(d);
+function renderGo(){
+    grid.className='morph-container mode-go';
+    dots.forEach(d=>{
+        d.className='dot';
+        const r=Math.random();
+        if(r>0.8)d.classList.add('black');
+        else if(r>0.6)d.classList.add('white');
+        else d.classList.add('hidden');
+    });
+}
+
+function renderQR(){
+    grid.className='morph-container mode-qr';
+    dots.forEach((d,i)=>{
+        d.className='dot';
+        const x=i%15; const y=Math.floor(i/15);
+        const isFinder=(x<4&&y<4)||(x>10&&y<4)||(x<4&&y>10);
+        if(isFinder||Math.random()>0.5)d.classList.add('active');
+        else d.classList.add('inactive');
+    });
+}
+
+function fancyMorphToQR(){
+    grid.classList.add('morphing');
+    setTimeout(()=>{
+        renderQR();
+        const scan=document.createElement('div');
+        scan.className='scan-line';
+        document.getElementById('background-layer').appendChild(scan);
+        setTimeout(()=>grid.classList.add('grid-flash'),500);
+        setTimeout(()=>{
+            grid.classList.remove('morphing','grid-flash');
+            scan.remove();
+        },1400);
+    },700);
+}
+
+function highlightFeature(type){
+    dots.forEach(d=>d.classList.remove('highlighted'));
+    currentHighlight=(currentHighlight===type)?null:type;
+    if(!currentHighlight)return;
+    dots.forEach((d,i)=>{
+        const x=i%15; const y=Math.floor(i/15);
+        if(type==="finder"){
+            if((x<4&&y<4)||(x>10&&y<4)||(x<4&&y>10))
+                d.classList.add('highlighted');
         }
-
-        // FACHLICHER SCHUTZ: Finder-Patterns dürfen nicht rot werden (Kritisch für QR-Funktion)
-        function isProtected(x, y) {
-            if (x <= 3 && y <= 3) return true;   // Oben Links
-            if (x >= 11 && y <= 3) return true;  // Oben Rechts
-            if (x <= 3 && y >= 11) return true;  // Unten Links
-            return false;
+        if(type==="format"){
+            if(y===7||x===7)d.classList.add('highlighted');
         }
-
-        function renderGo() {
-            grid.className = 'morph-container mode-go';
-            dots.forEach(d => {
-                d.className = 'dot';
-                let r = Math.random();
-                if(r > 0.8) d.classList.add('black');
-                else if(r > 0.6) d.classList.add('white');
-                else d.classList.add('hidden');
-            });
+        if(type==="sync"){
+            if(y===6)d.classList.add('highlighted');
         }
+    });
+}
 
-        function renderQR() {
-            grid.className = 'morph-container mode-qr';
-            dots.forEach((d, i) => {
-                d.className = 'dot';
-                const x = i % 15; const y = Math.floor(i / 15);
-                const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
-                const isHollow = (x===1||x===2) && (y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
-                if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) d.classList.add('active');
-                else d.classList.add('inactive');
-            });
-        }
+function renderDamage(){
+    damageStage++;
+    dots.filter(d=>d.classList.contains('active'))
+        .sort(()=>0.5-Math.random())
+        .slice(0,Math.floor(dots.length*0.1*damageStage))
+        .forEach(d=>d.classList.add('damaged'));
+    document.getElementById('qr-status-text').innerText=
+`> ERROR_LEVEL: ${damageStage*10}%
+> FINDER_PATTERNS: SECURED
+> DATA_RECOVERY: ACTIVE`;
+}
 
-        function renderDamage() {
-            damageStage++;
-            const steps = [0.08, 0.18, 0.28, 0.38, 0.50];
-            let targetRatio = steps[Math.min(damageStage - 1, 4)];
+function initApp(){
+document.getElementById('start-overlay').style.display='none';
+renderGo();
 
-            const dataDots = dots.filter((d, i) => {
-                const x = i % 15; const y = Math.floor(i / 15);
-                return d.classList.contains('active') && !isProtected(x, y);
-            });
+const pubnub=new PubNub({
+subscribeKey:'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7',
+userId:"viewer_"+Math.random().toString(16).slice(2)
+});
 
-            dataDots.sort(() => 0.5 - Math.random()).forEach((d, index) => {
-                if (index < Math.floor(dataDots.length * targetRatio)) d.classList.add('damaged');
-            });
-
-            const integrity = 100 - Math.floor(targetRatio * 100);
-            document.getElementById('qr-status-text').innerHTML = `> ERROR_LEVEL: ${100-integrity}%<br>> FINDER_PATTERNS: SECURED<br>> DATA_RECOVERY: ACTIVE`;
-        }
-
-        // Automatische Video-Logik beim Slide-Wechsel
-        deck.on('slidechanged', event => {
-            const idx = event.indexh;
-            
-            // Video Management
-            if (idx === 2) {
-                backgroundLayer.style.opacity = '0';
-                videoOverlay.classList.add('active');
-                mainVideo.currentTime = 0;
-                mainVideo.play();
-            } else {
-                videoOverlay.classList.remove('active');
-                mainVideo.pause();
-                backgroundLayer.style.opacity = (idx === 3) ? '0' : '1';
-                if(idx === 0) renderGo();
-                if(idx === 1) renderQR();
-            }
-        });
-
-        function initApp() {
-            document.getElementById('start-overlay').style.display = 'none';
-            renderGo();
-            
-            // Video-Vorladung um Verzögerung zu vermeiden
-            mainVideo.load();
-            mainVideo.play().then(() => mainVideo.pause());
-
-            const pubnub = new PubNub({ 
-                subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', 
-                userId: "viewer_" + Math.random().toString(16).slice(2) 
-            });
-
-            pubnub.addListener({
-                message: (m) => {
-                    const msg = m.message;
-                    // Fernsteuerung der Folien
-                    if(msg.slide !== undefined) deck.slide(msg.slide);
-                    
-                    // Fernsteuerung der Effekte
-                    if(msg.action === "damage") renderDamage();
-                    if(msg.action === "heal") {
-                        damageStage = 0;
-                        renderQR();
-                        document.getElementById('qr-status-text').innerHTML = "> SYNC_READY";
-                    }
-                    if(msg.action === "play_video") deck.slide(2);
-                }
-            });
-
-            pubnub.subscribe({ channels: ['PrasiW.Woche'] });
-        }
-    </script>
+pubnub.addListener({
+message:(m)=>{
+const msg=m.message;
+if(msg.slide!==undefined)deck.slide(msg.slide);
+if(msg.action==="morph_qr")fancyMorphToQR();
+if(msg.action==="damage")renderDamage();
+if(msg.action==="heal"){damageStage=0;renderQR();}
+if(msg.action==="highlight")highlightFeature(msg.feature);
+}
+});
+pubnub.subscribe({channels:['PrasiW.Woche']});
+}
+</script>
 </body>
 </html>
