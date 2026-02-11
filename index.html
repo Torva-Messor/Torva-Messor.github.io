@@ -2,133 +2,164 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Viewer - High Fidelity Edition</title>
+    <title>Torva Viewer - Ultimate Flex Edition</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
 
     <style>
+        /* --- FARBPALETTE & THEME --- */
         :root { 
-            --accent: #00f2ff; 
-            --damage: #ff0000;
-            --bg: #050505; 
-            --board-bg: #1a1a1a;
-            --matrix-green: #0f0;
+            --neon-blue: #00f2ff; 
+            --matrix-green: #00ff41;
+            --go-board: #1e1e1e;
+            --stone-shadow: rgba(0,0,0,0.8);
+            --bg-deep: #050505; 
         }
-        body { background: var(--bg); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
 
+        body { 
+            background: var(--bg-deep); 
+            overflow: hidden; 
+            font-family: 'Courier New', monospace; 
+            margin: 0; 
+        }
+
+        /* --- BACKGROUND LAYER (GRID) --- */
         #background-layer {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
             display: flex; justify-content: center; align-items: center;
             z-index: 1; 
-            pointer-events: none;
-            transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+            perspective: 1200px; /* Mehr Tiefe für 3D Effekte */
         }
 
-        .morph-container {
+        .morph-grid {
             display: grid;
             grid-template-columns: repeat(15, 1fr);
             grid-template-rows: repeat(15, 1fr);
-            gap: 6px;
-            width: 55vmin; height: 55vmin;
-            perspective: 1000px;
+            gap: 4px;
+            width: 60vmin; height: 60vmin;
+            transition: transform 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+            transform-style: preserve-3d;
         }
 
-        .dot { 
+        /* --- DIE ZELLEN (DOTS/BITS) --- */
+        .cell { 
             width: 100%; height: 100%; 
-            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55); 
+            display: flex; justify-content: center; align-items: center;
+            font-weight: bold;
+            font-size: 1.2vmin;
+            transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
             position: relative;
         }
 
-        /* FANCY GO STYLES */
-        .mode-go { background: var(--board-bg); gap: 2px; padding: 15px; border-radius: 8px; box-shadow: 0 0 40px rgba(0,0,0,0.5); }
-        .mode-go .dot { border-radius: 50%; transform: scale(0.85); box-shadow: inset 0 -2px 5px rgba(0,0,0,0.3); }
-        .mode-go .dot.white { background: radial-gradient(circle at 30% 30%, #fff, #ccc); box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
-        .mode-go .dot.black { background: radial-gradient(circle at 30% 30%, #444, #000); box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
-        .mode-go .dot.hidden { opacity: 0.05; transform: scale(0.2); }
+        /* --- MODUS 1: GO BRETT (Physical) --- */
+        .mode-go { 
+            background: rgba(30, 30, 30, 0.8); 
+            border-radius: 4px; 
+            padding: 10px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
+            transform: rotateX(20deg) rotateY(0deg);
+        }
+        .mode-go .cell { 
+            border-radius: 50%; 
+            font-size: 0; /* Text verstecken */
+            transform: scale(0.9);
+        }
+        .mode-go .cell.black { 
+            background: radial-gradient(circle at 35% 35%, #555, #000); 
+            box-shadow: 2px 5px 10px var(--stone-shadow);
+        }
+        .mode-go .cell.white { 
+            background: radial-gradient(circle at 35% 35%, #fff, #bbb); 
+            box-shadow: 2px 5px 10px var(--stone-shadow);
+        }
+        .mode-go .cell.empty { opacity: 0.1; background: transparent; transform: scale(0.1); }
 
-        /* FANCY QR STYLES */
-        .mode-qr { background: transparent; gap: 4px; transform: rotateX(10deg); }
-        .mode-qr .dot { border-radius: 2px; }
-        .mode-qr .dot.active { 
-            background: var(--accent); 
-            box-shadow: 0 0 8px var(--accent);
-            animation: pulse-glow 2s infinite ease-in-out;
+        /* --- MODUS 2: MATRIX BINÄR (Digital Chaos) --- */
+        .mode-binary {
+            background: transparent;
+            gap: 2px;
+            transform: rotateX(0deg) scale(1.1); /* Frontalansicht */
         }
-        .mode-qr .dot.inactive { background: rgba(0, 242, 255, 0.03); transform: scale(0.1); }
-        
-        /* DATA CORRUPTION ANIMATION */
-        @keyframes glitch-red {
-            0% { transform: scale(1) translate(0); filter: brightness(1); }
-            20% { transform: scale(1.1) translate(-2px, 1px); filter: brightness(1.5); }
-            40% { transform: scale(0.9) translate(2px, -1px); }
-            100% { transform: scale(1) translate(0); filter: brightness(1); }
-        }
-
-        .mode-qr .dot.damaged { 
-            background: var(--damage) !important; 
-            box-shadow: 0 0 20px var(--damage); 
-            animation: glitch-red 0.3s infinite;
-            z-index: 10;
-        }
-
-        @keyframes pulse-glow {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.7; transform: scale(0.95); }
-        }
-
-        /* OVERLAYS */
-        #video-overlay { 
-            position: fixed; inset: 0; background: #000; z-index: 50; 
-            display: flex; justify-content: center; align-items: center;
-            opacity: 0; pointer-events: none; transition: opacity 1s ease-in-out; 
-        }
-        #video-overlay.active { opacity: 1; pointer-events: auto; }
-        video { width: 100%; height: 100%; object-fit: contain; filter: contrast(1.1); }
-
-        /* START BUTTON GLOW */
-        #btn-start { 
-            border: 2px solid var(--accent); color: var(--accent); background: transparent; 
-            padding: 20px 50px; border-radius: 50px; cursor: pointer; 
-            text-transform: uppercase; letter-spacing: 4px; font-weight: bold;
-            transition: all 0.3s; box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
-        }
-        #btn-start:hover { background: var(--accent); color: #000; box-shadow: 0 0 50px var(--accent); }
-        
-        .matrix-text { 
-            color: var(--matrix-green); font-size: 1rem; margin-top: 60vh; 
-            background: rgba(0,0,0,0.9); padding: 15px; border-left: 4px solid var(--matrix-green);
-            box-shadow: 0 0 20px rgba(0, 255, 0, 0.1);
+        .mode-binary .cell {
+            border-radius: 0%;
+            background: transparent;
+            color: var(--matrix-green);
             text-shadow: 0 0 5px var(--matrix-green);
+            font-family: 'Consolas', monospace;
+            font-size: 2vmin;
+            opacity: 0.8;
+            box-shadow: none;
+        }
+        /* Flacker-Animation für Binär */
+        @keyframes flicker {
+            0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; }
+        }
+        .mode-binary .cell.flicker { animation: flicker 0.1s infinite; color: #fff; }
+
+        /* --- MODUS 3: QR CODE (High Tech) --- */
+        .mode-qr { 
+            background: transparent; 
+            gap: 3px; 
+            transform: rotateX(10deg) rotateY(-5deg); /* Leichter Winkel */
+        }
+        .mode-qr .cell { 
+            border-radius: 2px; 
+            font-size: 0; 
+            color: transparent;
+        }
+        .mode-qr .cell.active { 
+            background: var(--neon-blue); 
+            box-shadow: 0 0 10px var(--neon-blue);
+            transform: scale(1);
+        }
+        .mode-qr .cell.inactive { 
+            background: rgba(0, 242, 255, 0.05); 
+            transform: scale(0.2); 
+            box-shadow: none;
+        }
+
+        /* --- UTILS --- */
+        #btn-start { 
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            border: 2px solid var(--neon-blue); color: var(--neon-blue); background: transparent; 
+            padding: 20px 40px; font-size: 1.5rem; letter-spacing: 3px; cursor: pointer;
+            z-index: 100; transition: 0.3s;
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
+        }
+        #btn-start:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 60px var(--neon-blue); }
+
+        .status-log {
+            position: absolute; bottom: 5vh; left: 5vw;
+            color: var(--matrix-green); font-size: 0.9rem;
+            text-align: left; opacity: 0.7;
+            font-family: monospace;
         }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay"><button id="btn-start" onclick="initApp()">Initialize System</button></div>
-
-    <div id="video-overlay">
-        <video id="main-video" playsinline webkit-playsinline preload="auto">
-            <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
-        </video>
-    </div>
+    <button id="btn-start" onclick="initSystem()">INITIALIZE PROTOCOL</button>
 
     <div id="background-layer">
-        <div id="grid" class="morph-container mode-go"></div>
+        <div id="grid" class="morph-grid mode-go"></div>
     </div>
 
     <div class="reveal">
         <div class="slides">
-            <section><h2>ORIGIN</h2></section>
-            <section><div class="matrix-text" id="qr-status-text">> SYNC_READY</div></section>
-            <section data-background="#000"></section>
-            <section class="ar-slide">
-                <h2 style="color: white; text-shadow: 0 0 10px var(--accent);">DISCOVERY</h2>
-                <model-viewer id="astronaut-model" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer quick-look" camera-controls auto-rotate shadow-intensity="1">
-                    <button slot="ar-button" class="ar-trigger-button">🚀 AR STARTEN</button>
-                </model-viewer>
+            <section data-state="state-go">
+                <h1 style="text-shadow: 0 0 20px black;">STRATEGY</h1>
+            </section>
+            
+            <section data-state="state-binary">
+                <div class="status-log">> DECOMPILING OBJECTS...<br>> PARSING BINARY STREAM...</div>
+            </section>
+
+            <section data-state="state-qr">
+                <h2 style="color: var(--neon-blue); text-shadow: 0 0 20px var(--neon-blue);">ACCESS GRANTED</h2>
+                <div class="status-log" style="color: var(--neon-blue);">> RECONSTRUCTING DATA...<br>> LINK ESTABLISHED</div>
             </section>
         </div>
     </div>
@@ -137,117 +168,141 @@
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
 
     <script>
+        // --- SETUP ---
         const deck = new Reveal();
-        deck.initialize({ 
-            controls: false, progress: false, center: true, transition: 'fade',
-            keyboard: false, touch: false, mouseWheel: false, overview: false
-        });
+        deck.initialize({ controls: false, progress: false, center: true, transition: 'none' }); // Transition none, wir machen das selbst
 
         const grid = document.getElementById('grid');
-        const backgroundLayer = document.getElementById('background-layer');
-        const mainVideo = document.getElementById('main-video');
-        const videoOverlay = document.getElementById('video-overlay');
-        const dots = [];
+        const cells = [];
+        const gridSize = 15;
+        let binaryInterval = null;
 
-        for(let i=0; i<225; i++) {
-            let d = document.createElement('div');
-            d.className = 'dot';
-            grid.appendChild(d);
-            dots.push(d);
+        // Grid erzeugen
+        for(let i=0; i < gridSize*gridSize; i++) {
+            let div = document.createElement('div');
+            div.className = 'cell';
+            grid.appendChild(div);
+            cells.push(div);
         }
 
-        function isCriticalInfrastructure(x, y) {
-            if (x <= 3 && y <= 3) return true;
-            if (x >= 11 && y <= 3) return true;
-            if (x <= 3 && y >= 11) return true;
-            return false;
-        }
+        // --- RENDER FUNCTIONS ---
 
         function renderGo() {
-            grid.className = 'morph-container mode-go';
-            dots.forEach((d, i) => {
+            clearInterval(binaryInterval);
+            grid.className = 'morph-grid mode-go';
+            
+            cells.forEach((c, i) => {
+                c.innerHTML = ''; // Text entfernen
+                c.className = 'cell'; // Reset
+                
+                // Verzögerung für organischen Aufbau
                 setTimeout(() => {
-                    d.className = 'dot';
                     let r = Math.random();
-                    if(r > 0.8) d.classList.add('black');
-                    else if(r > 0.6) d.classList.add('white');
-                    else d.classList.add('hidden');
-                }, i * 2);
+                    if(r > 0.75) c.classList.add('black');
+                    else if(r > 0.55) c.classList.add('white');
+                    else c.classList.add('empty');
+                }, i * 1.5); // Wellenbewegung
             });
+        }
+
+        function renderBinary() {
+            grid.className = 'morph-grid mode-binary';
+            
+            // 1. Initialer Wechsel
+            cells.forEach((c, i) => {
+                c.classList.remove('black', 'white', 'empty', 'active', 'inactive');
+                
+                // Staggered Delay für "Matrix Regen" Effekt
+                const x = i % gridSize;
+                const y = Math.floor(i / gridSize);
+                const delay = (x + y) * 20; // Diagonale Welle
+
+                setTimeout(() => {
+                    c.innerText = Math.random() > 0.5 ? '1' : '0';
+                    if(Math.random() > 0.9) c.classList.add('flicker');
+                }, delay);
+            });
+
+            // 2. Loop für lebendige Zahlen (Das "Flexen")
+            if (binaryInterval) clearInterval(binaryInterval);
+            binaryInterval = setInterval(() => {
+                // Ändere zufällig 30 Zellen pro Frame
+                for(let k=0; k<30; k++) {
+                    const randIndex = Math.floor(Math.random() * cells.length);
+                    cells[randIndex].innerText = Math.random() > 0.5 ? '1' : '0';
+                    // Farb-Glitch
+                    cells[randIndex].style.color = Math.random() > 0.9 ? '#fff' : 'var(--matrix-green)';
+                }
+            }, 50);
         }
 
         function renderQR() {
-            grid.className = 'morph-container mode-qr';
-            dots.forEach((d, i) => {
-                const x = i % 15; const y = Math.floor(i / 15);
+            clearInterval(binaryInterval);
+            grid.className = 'morph-grid mode-qr';
+
+            cells.forEach((c, i) => {
+                c.innerText = ''; // Zahlen weg
+                c.style.color = ''; // Farbe reset
+                c.classList.remove('flicker');
+
+                const x = i % gridSize; 
+                const y = Math.floor(i / gridSize);
+                
+                // QR Finder Patterns Logik
                 const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
                 const isHollow = (x===1||x===2) && (y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
                 
+                // Schneller, technischer Aufbau (weniger Delay als Go)
                 setTimeout(() => {
-                    d.className = 'dot';
-                    if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) d.classList.add('active');
-                    else d.classList.add('inactive');
-                }, i * 1.5);
+                    c.className = 'cell'; // Basis reset
+                    if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) {
+                        c.classList.add('active');
+                    } else {
+                        c.classList.add('inactive');
+                    }
+                }, Math.random() * 500); // Zufälliges "Aufploppen" wie Datenpakete
             });
         }
 
-        function renderDamage() {
-            const activeDataDots = dots.filter((d, i) => {
-                const x = i % 15; const y = Math.floor(i / 15);
-                return d.classList.contains('active') && !isCriticalInfrastructure(x, y) && !d.classList.contains('damaged');
-            });
-
-            // Wähle 10 zufällige Dots pro Befehl für "Wow"-Effekt
-            const toDamage = activeDataDots.sort(() => 0.5 - Math.random()).slice(0, 12);
-            toDamage.forEach(d => d.classList.add('damaged'));
-
-            const integrity = Math.max(0, 100 - (dots.filter(d => d.classList.contains('damaged')).length * 1.2));
-            document.getElementById('qr-status-text').innerHTML = 
-                `> VOLTAGE_GLITCH: DETECTED<br>> DATA_INTEGRITY: ${Math.floor(integrity)}%<br>> SHIELD_STATUS: CRITICAL`;
-        }
-
+        // --- LOGIC HOOKS ---
+        
+        // Reveal.js Event Listener für Slide-Wechsel
         deck.on('slidechanged', event => {
-            const index = event.indexh;
-            if (index === 0) {
-                backgroundLayer.style.opacity = '1';
-                videoOverlay.classList.remove('active');
-                renderGo();
-            }
-            if (index === 1) {
-                backgroundLayer.style.opacity = '1';
-                videoOverlay.classList.remove('active');
-                renderQR();
-            }
-            if (index === 2) {
-                backgroundLayer.style.opacity = '0'; 
-                videoOverlay.classList.add('active');
-                mainVideo.play();
-            }
-            if (index === 3) {
-                backgroundLayer.style.opacity = '0';
-                videoOverlay.classList.remove('active');
-            }
+            const state = event.currentSlide.getAttribute('data-state');
+            if(state === 'state-go') renderGo();
+            if(state === 'state-binary') renderBinary();
+            if(state === 'state-qr') renderQR();
         });
 
-        function initApp() {
-            document.getElementById('start-overlay').style.display = 'none';
-            renderGo();
-            mainVideo.play().then(() => { mainVideo.pause(); mainVideo.currentTime = 0; });
-
+        function initSystem() {
+            document.getElementById('btn-start').style.display = 'none';
+            
+            // PubNub Setup
             const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v_" + Date.now() });
+            
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
-                    if(msg.slide !== undefined) deck.slide(msg.slide);
-                    if(msg.action === "damage") renderDamage();
-                    if(msg.action === "heal") {
-                        dots.forEach(d => d.classList.remove('damaged'));
-                        renderQR();
-                    }
+                    // Steuerung über PubNub
+                    if(msg.phase === "go") deck.slide(0);
+                    if(msg.phase === "binary") deck.slide(1);
+                    if(msg.phase === "qr") deck.slide(2);
+                    
+                    // Direct Override (Falls du ohne Slides steuern willst)
+                    if(msg.action === "render_go") renderGo();
+                    if(msg.action === "render_binary") renderBinary();
+                    if(msg.action === "render_qr") renderQR();
                 }
             });
             pubnub.subscribe({ channels: ['PrasiW.Woche'] });
+
+            // Start Animation
+            renderGo();
         }
+
+        // Init Go board visually on load (static)
+        renderGo();
+
     </script>
 </body>
 </html>
