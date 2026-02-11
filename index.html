@@ -2,54 +2,125 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Precision Sync v4</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Wissenschaftswoche 2026</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
     <style>
-        html, body { margin: 0; padding: 0; background-color: #000; overflow: hidden; width: 100vw; height: 100vh; }
+        /* Steve Jobs Ästhetik: Schwarz, clean, massive Schrift */
+        html, body { background-color: #000; overflow: hidden; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        
+        .reveal h1, .reveal h2, .reveal p { color: #fff; text-transform: none; }
+        .highlight { color: #2196F3; font-weight: bold; }
+        .big-number { font-size: 3em; font-weight: bold; color: #2196F3; display: block; }
+        .sub-text { font-size: 0.5em; color: #888; margin-top: 20px; }
+
+        /* Overlay & UI */
         #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
-        #start-btn { padding: 22px 60px; background: #2196F3; color: white; border: none; border-radius: 50px; font-size: 22px; font-weight: bold; cursor: pointer; }
+        #start-btn { padding: 20px 50px; background: #333; color: white; border: 1px solid #555; border-radius: 50px; font-size: 18px; cursor: pointer; transition: 0.3s; }
+        #start-btn:hover { background: #2196F3; border-color: #2196F3; }
         
-        .reveal { width: 100vw !important; height: 100vh !important; }
-        .reveal .slides { width: 100% !important; height: 100% !important; inset: 0 !important; transform: none !important; }
-        .reveal .slides section { width: 100% !important; height: 100% !important; top: 0 !important; left: 0 !important; padding: 0 !important; display: flex !important; align-items: center; justify-content: center; }
+        /* Vollbild Medien Container */
+        .fs-container { width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; }
+        video { width: 100%; height: 100%; object-fit: cover; }
         
-        .fs-container { width: 100% !important; height: 100% !important; position: absolute; top: 0; left: 0; display: flex; justify-content: center; align-items: center; background: #000; overflow: hidden; }
-        .fs-media { width: 100vw !important; height: 100vh !important; object-fit: cover; background: black; -webkit-transform: translateZ(0); }
+        /* AR Button Styling */
+        .ar-button { background: white; border-radius: 30px; border: none; padding: 15px 30px; position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%); font-weight: bold; color: #000; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
         
-        #status { position: fixed; top: 10px; left: 10px; color: rgba(255,255,255,0.4); font-family: monospace; font-size: 10px; z-index: 9999; pointer-events: none; }
-        .ar-button { background: white; border-radius: 30px; border: none; padding: 18px 36px; position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); font-weight: bold; color: #4285f4; z-index: 1000; }
+        #status { position: fixed; top: 10px; left: 10px; color: #444; font-size: 10px; font-family: monospace; pointer-events: none; z-index: 50; }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay"><button id="start-btn" onclick="initViewer()">START</button></div>
-    <div id="status">OFFSET: <span id="sync-val">0</span>ms</div>
-
-    <audio id="sync-audio" src="morse (2).mp3" preload="auto"></audio>
+    <div id="start-overlay"><button id="start-btn" onclick="initViewer()">Präsentation beitreten</button></div>
+    <div id="status">SYNC: <span id="sync-val">Ready</span></div>
 
     <div class="reveal">
         <div class="slides">
-            <section><h1>Ready</h1></section>
-            <section><div class="fs-container"><img src="IMG-20260205-WA0000.jpg" style="width: 100%; height: 100%; object-fit: contain;"></div></section>
+
+            <section>
+                <h1 class="r-fit-text">QR CODE</h1>
+                <p style="color:#666;">Wissenschaftswoche 2026</p>
+            </section>
+
+            <section data-auto-animate>
+                <h2 style="font-weight: 300;">Physische Darstellung</h2>
+                <h1 class="r-fit-text">BINÄRER DATEN</h1>
+                [span_4](start_span)<p class="sub-text">Mit Bitmask-Invertierung zur Fehlervermeidung[span_4](end_span)</p>
+            </section>
+
+            <section data-auto-animate>
+                <h3>Die Anatomie</h3>
+                <div style="display: flex; justify-content: space-around; align-items: center; margin-top: 50px;">
+                    <div class="fragment fade-up">
+                        <div style="width: 100px; height: 100px; border: 10px solid #fff; background: black;"></div>
+                        <p>Position</p>
+                    </div>
+                    <div class="fragment fade-up">
+                        <div style="width: 60px; height: 60px; border: 6px solid #666; background: black;"></div>
+                        <p>Ausrichtung</p>
+                    </div>
+                    <div class="fragment fade-up">
+                        <div style="width: 100px; height: 10px; background: repeating-linear-gradient(90deg, #fff, #fff 10px, #000 10px, #000 20px);"></div>
+                        <p>Timing</p>
+                    </div>
+                </div>
+                [span_5](start_span)<p class="sub-text" style="margin-top: 60px;">Erforderliche Muster für eindeutiges Auslesen[span_5](end_span)</p>
+            </section>
+
+            <section>
+                <h2 style="color: #888;">Das Problem:</h2>
+                <h3>Schmutz & Beschädigung</h3>
+                <br>
+                <h2 style="color: #2196F3;" class="fragment">Die Lösung:</h2>
+                <h1 class="r-fit-text fragment">REED-SOLOMON</h1>
+                [span_6](start_span)<p class="fragment">Mathematische Redundanz[span_6](end_span)</p>
+            </section>
+
+            <section>
+                <h3>Bis zu</h3>
+                <span class="r-fit-text highlight">30%</span>
+                <h3>Datenverlust</h3>
+                [span_7](start_span)<p>Level H (High) ermöglicht Lesbarkeit trotz massiver Schäden[span_7](end_span).</p>
+            </section>
+
+            <section>
+                <p style="font-size: 1.5em;">1992</p>
+                <h1>Masahiro Hara</h1>
+                [span_8](start_span)<p style="color: #888;">Inspiriert durch das Brettspiel Go[span_8](end_span)</p>
+            </section>
+
             <section data-background-color="#000">
                 <div class="fs-container">
-                    <video id="sync-video" class="fs-media" playsinline webkit-playsinline preload="auto">
+                    <video id="sync-video" playsinline webkit-playsinline preload="auto">
                         <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
                     </video>
                 </div>
             </section>
-            <section data-background-color="#000">
+
+            <section data-background-color="#111">
                 <div class="fs-container">
-                    <model-viewer id="ar-element" class="fs-media" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer quick-look" camera-controls interaction-prompt="none">
-                        <button slot="ar-button" class="ar-button">📷 IM RAUM ANSEHEN</button>
+                    <model-viewer 
+                        id="ar-element" 
+                        src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
+                        ar 
+                        ar-modes="webxr scene-viewer quick-look" 
+                        camera-controls 
+                        auto-rotate
+                        style="width: 100vw; height: 80vh;">
+                        <button slot="ar-button" class="ar-button">
+                            IN AR ANSEHEN
+                        </button>
                     </model-viewer>
                 </div>
+                <p style="position:absolute; bottom: 20px; width: 100%; text-align: center; color: #666; font-size: 12px;">
+                    Torva Precision Sync v4 - WebAR Module
+                </p>
             </section>
+
         </div>
     </div>
 
@@ -58,71 +129,98 @@
     <script src="config.js"></script>
 
     <script>
+        // Reveal Config für Zuschauer: Keine Controls, Passiv
         const deck = new Reveal();
-        deck.initialize({ width: "100%", height: "100%", margin: 0, minScale: 1, maxScale: 1, disableLayout: true, controls: false, progress: false, touch: false, transition: 'none' });
+        deck.initialize({ 
+            controls: false, 
+            progress: false, 
+            touch: false, 
+            transition: 'slide',
+            backgroundTransition: 'fade',
+            disableLayout: true, // Wichtig für Vollbild Video
+            margin: 0
+        });
         
-        const audio = document.getElementById("sync-audio");
         const video = document.getElementById("sync-video");
         const statusVal = document.getElementById("sync-val");
-
         let serverTimeOffset = 0;
         let currentStartTime = 0;
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+
+        // Video Index ist jetzt Slide Nummer 6 (Index 6, da wir bei 0 starten)
+        // Checken wir die Reihenfolge: 
+        // 0:Title, 1:Binär, 2:Anatomie, 3:Reed-Solomon, 4:30%, 5:History, 6:VIDEO, 7:AR
+        const VIDEO_INDEX = 6;
 
         async function initViewer() {
             document.getElementById("start-overlay").style.display = 'none';
-            const unlock = async (el) => { try { el.muted = true; await el.play(); el.pause(); el.currentTime = 0; el.muted = false; } catch(e) {} };
-            await unlock(audio); await unlock(video);
+            
+            // Video "Silent Unlock" für iOS
+            try { video.muted = true; await video.play(); video.pause(); video.currentTime = 0; video.muted = false; } catch(e){}
 
             const pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "u_" + Math.random().toString(36).substring(7) });
+            
+            // Time Sync
             const res = await pubnub.time();
             serverTimeOffset = Math.floor(res.timetoken / 10000) - Date.now();
 
             pubnub.addListener({
                 message: (m) => {
-                    if (m.message.index !== undefined) {
-                        deck.slide(m.message.index);
-                        currentStartTime = m.message.startTime;
-                        sync(true); 
+                    const msg = m.message;
+                    if (msg.index !== undefined) {
+                        // Slide Wechsel
+                        deck.slide(msg.index);
+                        
+                        // Wenn es Fragmente (Animationen) gibt
+                        if (msg.fragment !== undefined) {
+                            // Wir navigieren solange bis wir beim richtigen Fragment sind
+                            const currentIndices = deck.getIndices();
+                            if(currentIndices.f < msg.fragment) deck.next();
+                        }
+
+                        // Video Sync Daten speichern
+                        currentStartTime = msg.startTime;
+                        
+                        // Wenn wir auf der Video Slide sind, Sync starten
+                        if (msg.index === VIDEO_INDEX) {
+                            syncVideo(true);
+                        } else {
+                            video.pause(); // Video stoppen auf anderen Slides
+                        }
                     }
                 }
             });
             pubnub.subscribe({ channels: [My_Channel_Name] });
 
-            // Wir prüfen öfter (alle 300ms), um den Drift sofort zu stoppen
-            setInterval(() => sync(false), 300);
+            // Loop um Video synchron zu halten
+            setInterval(() => {
+                if(deck.getIndices().h === VIDEO_INDEX) syncVideo(false);
+            }, 500);
         }
 
-        function sync(force) {
-            const idx = deck.getState().indexh;
-            const el = (idx === 2) ? video : (idx === 1 ? audio : null);
-            if (!el || !currentStartTime) return;
+        function syncVideo(force) {
+            if (!currentStartTime) return;
+            
+            // Berechnung der aktuellen Position im Video basierend auf Serverzeit
+            const now = Date.now() + serverTimeOffset;
+            const targetTime = (now - currentStartTime) / 1000;
+            
+            if (targetTime < 0) return; // Video startet erst gleich
 
-            // Offset für Apple (Vorsprung), um das "Hinten-Anstehen" zu verhindern
-            const appleComp = isIOS ? 400 : 0; 
-            const target = ((Date.now() + serverTimeOffset) - (currentStartTime - appleComp)) / 1000;
-            const diff = target - el.currentTime;
+            const diff = targetTime - video.currentTime;
 
-            // 1. HARD JUMP: Wenn Apple mehr als 0.7s wegdriftet, zwingen wir ihn zur Zielzeit
-            if (force || Math.abs(diff) > 0.7) {
-                el.currentTime = target;
-                el.playbackRate = 1.0;
+            // Harter Sprung bei großer Abweichung (> 0.5s)
+            if (force || Math.abs(diff) > 0.5) {
+                video.currentTime = targetTime;
             } 
-            // 2. STUFEN-DRIFT:
-            // Wenn der Versatz wächst (> 150ms), erhöhen wir die Korrektur auf 6%.
-            else if (Math.abs(diff) > 0.15) {
-                el.playbackRate = diff > 0 ? 1.06 : 0.94; 
-            }
-            // Kleine Korrektur (3%) für den Feinschliff
-            else if (Math.abs(diff) > 0.04) {
-                el.playbackRate = diff > 0 ? 1.03 : 0.97;
-            }
-            else {
-                el.playbackRate = 1.0;
+            // Feine Anpassung der Geschwindigkeit bei kleiner Abweichung
+            else if (Math.abs(diff) > 0.1) {
+                video.playbackRate = diff > 0 ? 1.05 : 0.95;
+            } else {
+                video.playbackRate = 1.0;
             }
 
-            if (el.paused && target > 0 && target < el.duration) {
-                el.play().catch(() => { el.muted = true; el.play(); });
+            if (video.paused && targetTime < video.duration) {
+                video.play().catch(e => console.log("Autoplay blocked"));
             }
             statusVal.innerText = Math.round(diff * 1000) + "ms";
         }
