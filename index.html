@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Fancy Viewer</title>
+    <title>Torva Project - Final Viewer</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
@@ -14,105 +14,74 @@
             --damage: #ff0055; 
             --heal: #00ff88;
             --bg: #050505; 
-            --board-bg: #3a3a3a; /* Helleres Schiefer für Kontrast */
+            --board-bg: #3a3a3a; /* Brett-Farbe für Kontrast */
         }
-        body { background: var(--bg); overflow: hidden; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); color: white; margin: 0; overflow: hidden; }
 
-        /* --- THE GRID ENGINE --- */
+        /* GRID STYLING */
         .morph-container {
-            display: grid;
-            grid-template-columns: repeat(15, 1fr);
-            grid-template-rows: repeat(15, 1fr);
-            gap: 6px;
-            width: 55vmin; height: 55vmin;
-            margin: 0 auto;
-            padding: 20px;
-            border-radius: 8px;
-            transition: all 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+            display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr);
+            gap: 6px; width: 60vmin; height: 60vmin; margin: 0 auto;
+            padding: 20px; border-radius: 12px; transition: all 1s ease-in-out;
         }
 
-        .dot { width: 100%; height: 100%; transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .dot { width: 100%; height: 100%; transition: all 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
 
-        /* --- MODE 1: GO BRETT (Optimiert für Sichtbarkeit) --- */
-        .mode-go {
-            background: var(--board-bg); 
-            box-shadow: 0 20px 60px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,0.5);
-            gap: 2px;
-            transform: scale(0.9);
-            border: 2px solid #555;
-        }
-
-        .mode-go .dot { border-radius: 50%; transform: scale(0.9); }
-
-        /* Weißer Stein */
-        .mode-go .dot.white { 
-            background: radial-gradient(circle at 35% 35%, #ffffff, #bbb); 
-            box-shadow: 0 3px 5px rgba(0,0,0,0.4);
-        }
-
-        /* Schwarzer Stein (High-Gloss Obsidian) */
+        /* GO MODE - Fancy & Sichtbar */
+        .mode-go { background: var(--board-bg); box-shadow: 0 30px 80px rgba(0,0,0,0.8); border: 2px solid #555; }
+        .mode-go .dot.white { border-radius: 50%; background: radial-gradient(circle at 30% 30%, #fff, #bbb); box-shadow: 0 4px 8px rgba(0,0,0,0.3); }
         .mode-go .dot.black { 
-            background: radial-gradient(circle at 30% 30%, #555, #000); 
-            box-shadow: 0 3px 6px rgba(0,0,0,0.6), inset 2px 2px 3px rgba(255,255,255,0.3); 
+            border-radius: 50%; 
+            background: radial-gradient(circle at 30% 30%, #666, #000); /* Hellerer Glanz für Kontrast */
+            box-shadow: 0 4px 8px rgba(0,0,0,0.5), inset 2px 2px 4px rgba(255,255,255,0.3); 
         }
+        .mode-go .dot.hidden { transform: scale(0.1); opacity: 0.2; background: #fff; border-radius: 50%; }
 
-        .mode-go .dot.hidden { 
-            background: rgba(255,255,255,0.1);
-            transform: scale(0.15); 
-        }
+        /* QR MODE */
+        .mode-qr { background: transparent; gap: 4px; }
+        .mode-qr .dot.active { border-radius: 2px; background: var(--accent); box-shadow: 0 0 15px var(--accent); }
+        .mode-qr .dot.inactive { border-radius: 50%; transform: scale(0.2); background: rgba(255,255,255,0.1); }
 
-        /* --- MODE 2: QR CODE --- */
-        .mode-qr { background: transparent; box-shadow: none; gap: 4px; transform: scale(1.1); border: none; }
-        .mode-qr .dot { border-radius: 2px; transform: scale(1); }
-        .mode-qr .dot.active { background: var(--accent); box-shadow: 0 0 15px var(--accent); }
-        .mode-qr .dot.inactive { background: rgba(255,255,255,0.05); transform: scale(0.2); border-radius: 50%; }
+        /* DAMAGE & HEAL */
+        .mode-damage .dot.damaged { background: var(--damage); box-shadow: 0 0 20px var(--damage); animation: flicker 0.3s infinite; }
+        @keyframes flicker { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 
-        /* --- DAMAGE & HEAL --- */
-        .mode-damage .dot.damaged { background: var(--damage); box-shadow: 0 0 20px var(--damage); animation: glitch 0.3s infinite; }
-        .mode-heal .dot.active { background: var(--heal) !important; box-shadow: 0 0 20px var(--heal); transition: 0.3s; }
-
-        @keyframes glitch { 
-            0% { transform: translate(0,0); }
-            50% { transform: translate(-1px, 1px); opacity: 0.8; }
-            100% { transform: translate(0,0); }
-        }
-
-        /* --- VIDEO & AR --- */
-        #video-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; }
+        /* VIDEO */
+        #video-container { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: #000; }
         video { width: 100%; height: 100%; object-fit: contain; }
-        model-viewer { width: 100%; height: 80vh; margin-top: 5vh; }
 
-        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
-        #btn-start { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 20px 50px; font-size: 1.2rem; border-radius: 50px; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; }
+        /* OVERLAY */
+        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 999; display: flex; justify-content: center; align-items: center; }
+        #btn-init { padding: 20px 40px; border: 1px solid var(--accent); background: transparent; color: var(--accent); cursor: pointer; border-radius: 50px; font-family: monospace; }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay"><button id="btn-start" onclick="initApp()">Initialize Link</button></div>
+    <div id="start-overlay"><button id="btn-init" onclick="initApp()">INITIALIZE SYSTEM</button></div>
 
     <div class="reveal">
         <div class="slides">
             <section>
-                <h3 id="morph-title" style="margin-bottom: 40px; opacity: 0.7;">THE ORIGIN</h3>
+                <h2 id="title" style="letter-spacing: 5px; color: var(--accent);">THE ORIGIN</h2>
                 <div id="grid" class="morph-container mode-go"></div>
             </section>
 
             <section>
-                <h3>REED-SOLOMON</h3>
-                <p style="color:#666; font-size: 0.8rem">Recovering Data Structure...</p>
+                <h2>ERROR CORRECTION</h2>
+                <p>Reed-Solomon Recovery Active</p>
             </section>
 
             <section data-background="#000">
                 <div id="video-container">
-                    <video id="main-video" playsinline webkit-playsinline>
+                    <video id="main-video" playsinline>
                         <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
                     </video>
                 </div>
             </section>
 
             <section>
-                <h3>AR OBJECT</h3>
-                <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer quick-look" camera-controls auto-rotate shadow-intensity="1"></model-viewer>
+                <h2>AR DECODING</h2>
+                <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar camera-controls auto-rotate shadow-intensity="1"></model-viewer>
             </section>
         </div>
     </div>
@@ -120,74 +89,58 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
     <script src="config.js"></script>
+
     <script>
         const deck = new Reveal();
-        deck.initialize({ controls: false, progress: false, touch: false, keyboard: false, transition: 'fade' });
+        deck.initialize({ controls: false, progress: false, keyboard: false, touch: false });
 
-        const grid = document.getElementById('grid');
         const dots = [];
-        const gridSize = 15;
-
-        for(let i=0; i<gridSize*gridSize; i++) {
-            let d = document.createElement('div'); d.className = 'dot';
-            d.style.transitionDelay = (Math.random() * 0.3) + 's';
-            grid.appendChild(d); dots.push(d);
+        for(let i=0; i<225; i++) {
+            let d = document.createElement('div');
+            d.className = 'dot';
+            d.style.transitionDelay = (Math.random() * 0.4) + 's';
+            document.getElementById('grid').appendChild(d);
+            dots.push(d);
         }
 
-        function renderGo() {
-            grid.className = 'morph-container mode-go';
-            document.getElementById('morph-title').innerText = "1992: THE ORIGIN";
+        function showGo() {
+            document.getElementById('grid').className = 'morph-container mode-go';
             dots.forEach(d => {
                 d.className = 'dot';
                 let r = Math.random();
                 if(r > 0.8) d.classList.add('black');
-                else if(r > 0.65) d.classList.add('white');
+                else if(r > 0.6) d.classList.add('white');
                 else d.classList.add('hidden');
             });
         }
 
-        function renderQR() {
-            grid.className = 'morph-container mode-qr';
-            document.getElementById('morph-title').innerText = "THE MATRIX";
+        function showQR() {
+            document.getElementById('grid').className = 'morph-container mode-qr';
             dots.forEach((d, i) => {
                 d.className = 'dot';
-                const x = i % gridSize; const y = Math.floor(i / gridSize);
+                const x = i % 15; const y = Math.floor(i / 15);
                 const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
-                const isHollow = (x===1||x===2) && (y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
-                if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) d.classList.add('active');
+                if(isFinder || Math.random() > 0.5) d.classList.add('active');
                 else d.classList.add('inactive');
             });
         }
 
-        function renderDamage() {
-            grid.classList.add('mode-damage');
-            dots.forEach(d => { if(d.classList.contains('active') && Math.random() > 0.6) { d.classList.remove('active'); d.classList.add('damaged'); } });
-        }
-
-        function renderHeal() {
-            grid.classList.remove('mode-damage'); grid.classList.add('mode-heal');
-            dots.forEach(d => { if(d.classList.contains('damaged')) { d.classList.remove('damaged'); d.classList.add('active'); } });
-            setTimeout(() => grid.classList.remove('mode-heal'), 1000);
-        }
-
-        function playVideo() {
-            const v = document.getElementById('main-video');
-            v.currentTime = 0; v.play().catch(() => { v.muted = true; v.play(); });
-        }
-
         function initApp() {
             document.getElementById('start-overlay').style.display = 'none';
-            renderGo();
-            const pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "view" });
+            showGo();
+            const pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "viewer" });
             pubnub.addListener({
                 message: (m) => {
-                    const msg = m.message;
-                    if(msg.slide !== undefined) deck.slide(msg.slide);
-                    if(msg.action === "morph_go") renderGo();
-                    if(msg.action === "morph_qr") renderQR();
-                    if(msg.action === "damage") renderDamage();
-                    if(msg.action === "heal") renderHeal();
-                    if(msg.action === "play_video") playVideo();
+                    const data = m.message;
+                    if(data.slide !== undefined) deck.slide(data.slide);
+                    if(data.action === "morph_go") showGo();
+                    if(data.action === "morph_qr") showQR();
+                    if(data.action === "damage") dots.forEach(d => { if(d.classList.contains('active') && Math.random() > 0.7) d.className = 'dot damaged'; });
+                    if(data.action === "heal") dots.forEach(d => { if(d.classList.contains('damaged')) d.className = 'dot active'; });
+                    if(data.action === "play_video") {
+                        const v = document.getElementById('main-video');
+                        v.currentTime = 0; v.play().catch(() => { v.muted = true; v.play(); });
+                    }
                 }
             });
             pubnub.subscribe({ channels: [My_Channel_Name] });
