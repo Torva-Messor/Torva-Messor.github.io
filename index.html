@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Viewer - Ultimate Flex Edition</title>
+    <title>Torva Viewer - CYBERPUNK FLEX EDITION</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
@@ -11,11 +11,10 @@
     <style>
         /* --- FARBPALETTE & THEME --- */
         :root { 
-            --neon-blue: #00f2ff; 
+            --neon-cyan: #00f2ff; 
+            --neon-pink: #ff003c;
             --matrix-green: #00ff41;
-            --go-board: #1e1e1e;
-            --stone-shadow: rgba(0,0,0,0.8);
-            --bg-deep: #050505; 
+            --bg-deep: #020202; 
         }
 
         body { 
@@ -25,23 +24,26 @@
             margin: 0; 
         }
 
-        /* --- BACKGROUND LAYER (GRID) --- */
+        /* --- BACKGROUND LAYER (GRID CONTAINER) --- */
         #background-layer {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
             display: flex; justify-content: center; align-items: center;
             z-index: 1; 
-            perspective: 1200px; /* Mehr Tiefe für 3D Effekte */
+            perspective: 1500px; /* Extreme Tiefe */
+            overflow: hidden;
         }
 
+        /* Der Container, der sich verwandelt */
         .morph-grid {
             display: grid;
             grid-template-columns: repeat(15, 1fr);
             grid-template-rows: repeat(15, 1fr);
-            gap: 4px;
-            width: 60vmin; height: 60vmin;
-            transition: transform 1s cubic-bezier(0.2, 0.8, 0.2, 1);
+            width: 65vmin; height: 65vmin;
+            /* WICHTIG: Die Transition ist jetzt viel aggressiver */
+            transition: all 0.8s cubic-bezier(0.1, 0.9, 0.2, 1.2); 
             transform-style: preserve-3d;
+            position: relative;
         }
 
         /* --- DIE ZELLEN (DOTS/BITS) --- */
@@ -49,99 +51,158 @@
             width: 100%; height: 100%; 
             display: flex; justify-content: center; align-items: center;
             font-weight: bold;
-            font-size: 1.2vmin;
-            transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+            font-family: 'Consolas', monospace;
+            transition: all 0.5s ease-out;
             position: relative;
         }
 
-        /* --- MODUS 1: GO BRETT (Physical) --- */
+        /* ==============================
+           MODUS 1: GO BRETT (Physisch)
+        ============================== */
         .mode-go { 
-            background: rgba(30, 30, 30, 0.8); 
-            border-radius: 4px; 
-            padding: 10px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-            transform: rotateX(20deg) rotateY(0deg);
+            /* Gitterlinien mit CSS Gradienten zeichnen */
+            background-color: #1a1a1a;
+            background-image: 
+                linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px);
+            background-size: calc(100% / 15) calc(100% / 15);
+            background-position: center;
+            border: 2px solid #333;
+            padding: 2px; /* Kleiner Padding damit Steine auf Kreuzung liegen */
+            
+            gap: 0px; /* Kein Gap beim Go Brett */
+            box-shadow: 0 30px 60px rgba(0,0,0,0.9);
+            transform: rotateX(25deg) scale(0.9);
         }
         .mode-go .cell { 
             border-radius: 50%; 
-            font-size: 0; /* Text verstecken */
-            transform: scale(0.9);
+            font-size: 0; 
+            transform: scale(0.85); /* Steine etwas kleiner als Feld */
+            backface-visibility: hidden;
         }
         .mode-go .cell.black { 
-            background: radial-gradient(circle at 35% 35%, #555, #000); 
-            box-shadow: 2px 5px 10px var(--stone-shadow);
+            background: radial-gradient(circle at 30% 30%, #666, #000); 
+            box-shadow: inset 0 -2px 5px rgba(0,0,0,0.5), 2px 2px 5px rgba(0,0,0,0.5);
         }
         .mode-go .cell.white { 
-            background: radial-gradient(circle at 35% 35%, #fff, #bbb); 
-            box-shadow: 2px 5px 10px var(--stone-shadow);
+            background: radial-gradient(circle at 30% 30%, #fff, #ccc); 
+            box-shadow: inset 0 -2px 5px rgba(0,0,0,0.2), 2px 2px 5px rgba(0,0,0,0.5);
         }
-        .mode-go .cell.empty { opacity: 0.1; background: transparent; transform: scale(0.1); }
+        .mode-go .cell.empty { opacity: 0; }
 
-        /* --- MODUS 2: MATRIX BINÄR (Digital Chaos) --- */
+
+        /* ==============================
+           MODUS 2: BINÄR CHAOS (Digital)
+        ============================== */
         .mode-binary {
             background: transparent;
             gap: 2px;
-            transform: rotateX(0deg) scale(1.1); /* Frontalansicht */
+            transform: rotateX(0deg) scale(1.2);
         }
         .mode-binary .cell {
             border-radius: 0%;
-            background: transparent;
             color: var(--matrix-green);
-            text-shadow: 0 0 5px var(--matrix-green);
-            font-family: 'Consolas', monospace;
+            text-shadow: 0 0 8px var(--matrix-green);
             font-size: 2vmin;
-            opacity: 0.8;
-            box-shadow: none;
+            /* Leichtes Jittering für digitalen Look */
+            animation: jitter 0.2s infinite random; 
         }
-        /* Flacker-Animation für Binär */
-        @keyframes flicker {
-            0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; }
+        @keyframes jitter {
+            0% { transform: translate(0,0); }
+            25% { transform: translate(1px, -1px); }
+            50% { transform: translate(-1px, 0.5px); }
+            75% { transform: translate(0.5px, 1px); }
+            100% { transform: translate(0,0); }
         }
-        .mode-binary .cell.flicker { animation: flicker 0.1s infinite; color: #fff; }
 
-        /* --- MODUS 3: QR CODE (High Tech) --- */
+        /* ==============================
+           MODUS 3: QR CODE (High Tech)
+        ============================== */
         .mode-qr { 
-            background: transparent; 
+            background: rgba(0, 242, 255, 0.02);
             gap: 3px; 
-            transform: rotateX(10deg) rotateY(-5deg); /* Leichter Winkel */
+            transform: rotateX(5deg) rotateY(-5deg) scale(1);
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.1);
         }
         .mode-qr .cell { 
-            border-radius: 2px; 
-            font-size: 0; 
-            color: transparent;
+            font-size: 0; color: transparent; border-radius: 2px;
+            transition: background 0.2s ease-in;
         }
         .mode-qr .cell.active { 
-            background: var(--neon-blue); 
-            box-shadow: 0 0 10px var(--neon-blue);
-            transform: scale(1);
+            background: var(--neon-cyan); 
+            box-shadow: 0 0 15px var(--neon-cyan);
         }
         .mode-qr .cell.inactive { 
             background: rgba(0, 242, 255, 0.05); 
-            transform: scale(0.2); 
-            box-shadow: none;
         }
+
+        /* ==============================
+           THE ULTIMATE FLEX: GLITCH TRANSITION
+        ============================== */
+        /* Wenn diese Klasse aktiv ist, crasht das System */
+        .morph-grid.glitch-active {
+            animation: system-crash 0.6s cubic-bezier(0.1, 0.9, 0.2, 1) both;
+        }
+
+        /* Der RGB Split Effekt (Chromatic Aberration) */
+        .morph-grid.glitch-active .cell {
+            animation: cell-explode 0.6s cubic-bezier(0.1, 0.9, 0.2, 1) both;
+            text-shadow: -2px 0 var(--neon-cyan), 2px 0 var(--neon-pink);
+            color: #fff !important;
+            background: transparent !important;
+            box-shadow: none !important;
+            border-radius: 0 !important;
+        }
+
+        @keyframes system-crash {
+            0% { transform: scale(1) rotateX(0); filter: brightness(1) contrast(1); }
+            10% { transform: scale(1.5) rotateX(10deg) rotateZ(2deg) skewX(5deg); filter: brightness(2) contrast(2) hue-rotate(90deg); }
+            30% { transform: scale(0.8) rotateX(-5deg) rotateZ(-2deg) skewX(-5deg); background: rgba(255,255,255,0.1); }
+            60% { transform: scale(1.1) translate(10px, -10px); filter: brightness(1.5); }
+            100% { transform: scale(1) rotateX(0); filter: brightness(1); }
+        }
+
+        /* Einzelne Zellen explodieren nach außen */
+        @keyframes cell-explode {
+             0% { transform: translateZ(0); opacity: 1; font-size: 1vmin;}
+             20% { transform: translateZ(400px) rotateY(180deg); opacity: 0.8; font-size: 3vmin;}
+             100% { transform: translateZ(0) rotateY(360deg); opacity: 1; font-size: 1vmin;}
+        }
+
+        /* Blitz-Effekt auf dem Body während des Glitches */
+        body.glitching::after {
+            content: ''; position: fixed; inset: 0;
+            background: white; z-index: 100;
+            animation: flash 0.6s both;
+            pointer-events: none;
+        }
+        @keyframes flash { 0%, 100% { opacity: 0; } 10%, 30% { opacity: 0.4; } }
+
 
         /* --- UTILS --- */
         #btn-start { 
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            border: 2px solid var(--neon-blue); color: var(--neon-blue); background: transparent; 
-            padding: 20px 40px; font-size: 1.5rem; letter-spacing: 3px; cursor: pointer;
+            border: 2px solid var(--neon-cyan); color: var(--neon-cyan); background: transparent; 
+            padding: 20px 40px; font-size: 1.5rem; letter-spacing: 4px; cursor: pointer; font-weight: bold;
             z-index: 100; transition: 0.3s;
             box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
+            text-shadow: 0 0 10px var(--neon-cyan);
         }
-        #btn-start:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 60px var(--neon-blue); }
+        #btn-start:hover { background: var(--neon-cyan); color: #000; box-shadow: 0 0 80px var(--neon-cyan); }
 
-        .status-log {
-            position: absolute; bottom: 5vh; left: 5vw;
-            color: var(--matrix-green); font-size: 0.9rem;
-            text-align: left; opacity: 0.7;
-            font-family: monospace;
+        .overlay-text {
+            position: absolute; width: 100%; text-align: center;
+            font-family: 'Impact', sans-serif; text-transform: uppercase;
+            letter-spacing: 10px;
+            pointer-events: none;
+            mix-blend-mode: overlay; /* Wichtiger Effekt */
         }
+
     </style>
 </head>
 <body>
 
-    <button id="btn-start" onclick="initSystem()">INITIALIZE PROTOCOL</button>
+    <button id="btn-start" onclick="initSystem()">INITIALIZE SYSTEM</button>
 
     <div id="background-layer">
         <div id="grid" class="morph-grid mode-go"></div>
@@ -150,16 +211,15 @@
     <div class="reveal">
         <div class="slides">
             <section data-state="state-go">
-                <h1 style="text-shadow: 0 0 20px black;">STRATEGY</h1>
+                <h2 class="overlay-text" style="color: #fff; text-shadow: 0 0 20px #fff;">ANALOG ORIGIN</h2>
             </section>
             
             <section data-state="state-binary">
-                <div class="status-log">> DECOMPILING OBJECTS...<br>> PARSING BINARY STREAM...</div>
+                 <h2 class="overlay-text" style="color: var(--matrix-green); text-shadow: 0 0 20px var(--matrix-green);">SYSTEM BREACH</h2>
             </section>
 
             <section data-state="state-qr">
-                <h2 style="color: var(--neon-blue); text-shadow: 0 0 20px var(--neon-blue);">ACCESS GRANTED</h2>
-                <div class="status-log" style="color: var(--neon-blue);">> RECONSTRUCTING DATA...<br>> LINK ESTABLISHED</div>
+                <h2 class="overlay-text" style="color: var(--neon-cyan); text-shadow: 0 0 30px var(--neon-cyan);">DIGITAL LINK ESTABLISHED</h2>
             </section>
         </div>
     </div>
@@ -170,137 +230,133 @@
     <script>
         // --- SETUP ---
         const deck = new Reveal();
-        deck.initialize({ controls: false, progress: false, center: true, transition: 'none' }); // Transition none, wir machen das selbst
+        // Transition 'none' ist wichtig, wir machen die Transition manuell!
+        deck.initialize({ controls: false, progress: false, center: true, transition: 'none', backgroundTransition: 'none' });
 
         const grid = document.getElementById('grid');
         const cells = [];
         const gridSize = 15;
         let binaryInterval = null;
+        let isGlitching = false;
 
         // Grid erzeugen
         for(let i=0; i < gridSize*gridSize; i++) {
             let div = document.createElement('div');
             div.className = 'cell';
+            // Zufälliger Delay für Jitter-Animation, damit nicht alle synchron wackeln
+            div.style.animationDelay = `-${Math.random()}s`;
             grid.appendChild(div);
             cells.push(div);
         }
 
-        // --- RENDER FUNCTIONS ---
+        // --- CORE TRANSITION FUNCTION (THE FLEX) ---
+        
+        function triggerGlitchTransition(targetModeCallback) {
+            if(isGlitching) return;
+            isGlitching = true;
+
+            // 1. START THE CHAOS
+            document.body.classList.add('glitching');
+            grid.classList.add('glitch-active');
+            
+            // Optional: Sound Effekt hier abspielen
+
+            // 2. WAIT FOR EXPLOSION, THEN SWITCH DATA
+            setTimeout(() => {
+                clearInterval(binaryInterval);
+                targetModeCallback(); // Zielzustand rendern (Daten ändern)
+            }, 300); // Nach 300ms mitten im Glitch die Daten tauschen
+
+            // 3. RESOLVE CHAOS INTO ORDER
+            setTimeout(() => {
+                 document.body.classList.remove('glitching');
+                 grid.classList.remove('glitch-active');
+                 isGlitching = false;
+            }, 700); // Gesamtzeit des Glitches
+        }
+
+
+        // --- RENDER STATES ---
 
         function renderGo() {
-            clearInterval(binaryInterval);
             grid.className = 'morph-grid mode-go';
-            
             cells.forEach((c, i) => {
-                c.innerHTML = ''; // Text entfernen
-                c.className = 'cell'; // Reset
-                
-                // Verzögerung für organischen Aufbau
-                setTimeout(() => {
-                    let r = Math.random();
-                    if(r > 0.75) c.classList.add('black');
-                    else if(r > 0.55) c.classList.add('white');
-                    else c.classList.add('empty');
-                }, i * 1.5); // Wellenbewegung
+                c.innerHTML = ''; c.className = 'cell'; c.style.color = '';
+                // Kein Delay hier, Go ist der Ruhezustand
+                let r = Math.random();
+                if(r > 0.75) c.classList.add('black');
+                else if(r > 0.58) c.classList.add('white');
+                else c.classList.add('empty');
             });
         }
 
         function renderBinary() {
             grid.className = 'morph-grid mode-binary';
-            
-            // 1. Initialer Wechsel
-            cells.forEach((c, i) => {
-                c.classList.remove('black', 'white', 'empty', 'active', 'inactive');
-                
-                // Staggered Delay für "Matrix Regen" Effekt
-                const x = i % gridSize;
-                const y = Math.floor(i / gridSize);
-                const delay = (x + y) * 20; // Diagonale Welle
-
-                setTimeout(() => {
-                    c.innerText = Math.random() > 0.5 ? '1' : '0';
-                    if(Math.random() > 0.9) c.classList.add('flicker');
-                }, delay);
+            cells.forEach(c => {
+                c.className = 'cell'; // Reset
+                c.innerText = Math.random() > 0.5 ? '1' : '0';
             });
 
-            // 2. Loop für lebendige Zahlen (Das "Flexen")
-            if (binaryInterval) clearInterval(binaryInterval);
+            // High-Speed Number Crunching Loop
             binaryInterval = setInterval(() => {
-                // Ändere zufällig 30 Zellen pro Frame
-                for(let k=0; k<30; k++) {
+                for(let k=0; k<50; k++) { // 50 Zellen pro Frame ändern für maximalen Speed
                     const randIndex = Math.floor(Math.random() * cells.length);
                     cells[randIndex].innerText = Math.random() > 0.5 ? '1' : '0';
-                    // Farb-Glitch
-                    cells[randIndex].style.color = Math.random() > 0.9 ? '#fff' : 'var(--matrix-green)';
+                    // Gelegentlich weiße Blitze in den Zahlen
+                    cells[randIndex].style.color = Math.random() > 0.95 ? '#fff' : 'var(--matrix-green)';
                 }
-            }, 50);
+            }, 30);
         }
 
         function renderQR() {
-            clearInterval(binaryInterval);
             grid.className = 'morph-grid mode-qr';
-
             cells.forEach((c, i) => {
-                c.innerText = ''; // Zahlen weg
-                c.style.color = ''; // Farbe reset
-                c.classList.remove('flicker');
-
-                const x = i % gridSize; 
-                const y = Math.floor(i / gridSize);
-                
-                // QR Finder Patterns Logik
+                c.innerText = ''; c.style.color = ''; 
+                const x = i % gridSize; const y = Math.floor(i / gridSize);
                 const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
                 const isHollow = (x===1||x===2) && (y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
                 
-                // Schneller, technischer Aufbau (weniger Delay als Go)
-                setTimeout(() => {
-                    c.className = 'cell'; // Basis reset
-                    if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) {
-                        c.classList.add('active');
-                    } else {
-                        c.classList.add('inactive');
-                    }
-                }, Math.random() * 500); // Zufälliges "Aufploppen" wie Datenpakete
+                c.className = 'cell';
+                if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) c.classList.add('active');
+                else c.classList.add('inactive');
             });
         }
 
         // --- LOGIC HOOKS ---
         
-        // Reveal.js Event Listener für Slide-Wechsel
+        // Wenn Reveal.js die Folie wechselt, triggern wir den Glitch
         deck.on('slidechanged', event => {
             const state = event.currentSlide.getAttribute('data-state');
-            if(state === 'state-go') renderGo();
-            if(state === 'state-binary') renderBinary();
-            if(state === 'state-qr') renderQR();
+
+            if(state === 'state-go') {
+                 // Beim Zurückkehren zu Go vielleicht weniger Glitch, eher ein "Reset"
+                 renderGo(); 
+            }
+            if(state === 'state-binary') {
+                triggerGlitchTransition(renderBinary);
+            }
+            if(state === 'state-qr') {
+                triggerGlitchTransition(renderQR);
+            }
         });
 
         function initSystem() {
             document.getElementById('btn-start').style.display = 'none';
-            
-            // PubNub Setup
+            renderGo();
+            // PubNub Setup (gleicher Key wie vorher)
             const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v_" + Date.now() });
-            
             pubnub.addListener({
                 message: (m) => {
-                    const msg = m.message;
-                    // Steuerung über PubNub
-                    if(msg.phase === "go") deck.slide(0);
-                    if(msg.phase === "binary") deck.slide(1);
-                    if(msg.phase === "qr") deck.slide(2);
-                    
-                    // Direct Override (Falls du ohne Slides steuern willst)
-                    if(msg.action === "render_go") renderGo();
-                    if(msg.action === "render_binary") renderBinary();
-                    if(msg.action === "render_qr") renderQR();
+                    // Steuerung über PubNub Channel
+                    if(m.message.phase === "go") deck.slide(0);
+                    if(m.message.phase === "binary") deck.slide(1);
+                    if(m.message.phase === "qr") deck.slide(2);
                 }
             });
             pubnub.subscribe({ channels: ['PrasiW.Woche'] });
-
-            // Start Animation
-            renderGo();
         }
 
-        // Init Go board visually on load (static)
+        // Initial state
         renderGo();
 
     </script>
