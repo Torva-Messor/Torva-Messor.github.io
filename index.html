@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Fullscreen Sync</title>
+    <title>Torva High-Performance Sync</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
@@ -10,7 +10,7 @@
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
 
     <style>
-        /* Verhindert jegliche Ränder */
+        /* Grund-Layout auf 100% setzen */
         html, body { margin: 0; padding: 0; background-color: #000; overflow: hidden; width: 100%; height: 100%; }
         
         #start-overlay { 
@@ -22,37 +22,36 @@
             border-radius: 50px; font-size: 22px; font-weight: bold; cursor: pointer; 
         }
 
-        /* Fullscreen Container Fix */
-        .reveal, .slides { width: 100% !important; height: 100% !important; inset: 0 !important; }
+        /* REVEAL FULLSCREEN ÜBERSCHREIBEN */
+        .reveal { width: 100vw !important; height: 100vh !important; }
+        .reveal .slides { 
+            width: 100% !important; height: 100% !important; 
+            inset: 0 !important; transform: none !important; /* Verhindert das kleine Fenster */
+        }
         
-        /* Erzwingt, dass die Slide den Platz komplett füllt */
         .reveal .slides section { 
             width: 100% !important; height: 100% !important; 
-            padding: 0 !important; top: 0 !important; display: flex !important;
-            flex-direction: column; justify-content: center; align-items: center;
+            top: 0 !important; left: 0 !important; padding: 0 !important;
+            display: flex !important; align-items: center; justify-content: center;
         }
 
+        /* CONTAINER FIX */
         .fs-container { 
-            width: 100vw; height: 100vh; 
+            width: 100% !important; height: 100% !important; 
+            position: absolute; top: 0; left: 0;
             display: flex; justify-content: center; align-items: center; 
             background: #000; overflow: hidden;
         }
         
         .fs-media { 
-            width: 100% !important; height: 100% !important; 
-            /* 'cover' füllt den Screen komplett aus (schneidet evtl. minimal Ränder ab) */
-            /* 'contain' zeigt das ganze Video mit schwarzen Balken */
-            object-fit: cover; 
-            background: black;
+            min-width: 100%; min-height: 100%;
+            width: 100vw !important; height: 100vh !important;
+            object-fit: cover; /* Füllt den gesamten Screen aus */
+            -webkit-transform: translateZ(0);
         }
 
-        .ar-button { 
-            background: white; border-radius: 30px; border: none; padding: 18px 36px; 
-            position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); 
-            font-weight: bold; color: #4285f4; z-index: 1000; box-shadow: 0 4px 15px rgba(0,0,0,0.5); 
-        }
-        
-        #status { position: fixed; top: 10px; left: 10px; color: rgba(255,255,255,0.3); font-family: monospace; font-size: 10px; z-index: 9999; }
+        #status { position: fixed; top: 10px; left: 10px; color: rgba(255,255,255,0.4); font-family: monospace; font-size: 10px; z-index: 9999; }
+        .ar-button { background: white; border-radius: 30px; border: none; padding: 18px 36px; position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); font-weight: bold; color: #4285f4; z-index: 1000; }
     </style>
 </head>
 <body>
@@ -64,14 +63,14 @@
 
     <div class="reveal">
         <div class="slides">
-            <section><h1>Bereit</h1></section>
+            <section><h1>Ready</h1></section>
             
             <section>
                 <div class="fs-container">
                     <img src="IMG-20260205-WA0000.jpg" style="width: 100%; height: 100%; object-fit: contain;">
                 </div>
             </section>
-
+            
             <section data-background-color="#000">
                 <div class="fs-container">
                     <video id="sync-video" class="fs-media" playsinline webkit-playsinline preload="auto">
@@ -95,17 +94,12 @@
     <script src="config.js"></script>
 
     <script>
+        // Reveal mit deaktivierter Skalierung initialisieren
         const deck = new Reveal();
         deck.initialize({ 
-            width: "100%", 
-            height: "100%", 
-            margin: 0, 
-            minScale: 1, 
-            maxScale: 1,
-            controls: false, 
-            progress: false, 
-            touch: false, 
-            transition: 'none' 
+            width: "100%", height: "100%", margin: 0, 
+            minScale: 1, maxScale: 1, disableLayout: true, // EXTREM WICHTIG FÜR ANDROID
+            controls: false, progress: false, touch: false, transition: 'none' 
         });
         
         const audio = document.getElementById("sync-audio");
@@ -114,6 +108,7 @@
 
         let serverTimeOffset = 0;
         let currentStartTime = 0;
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
 
         async function initViewer() {
             document.getElementById("start-overlay").style.display = 'none';
@@ -135,7 +130,7 @@
             });
             pubnub.subscribe({ channels: [My_Channel_Name] });
 
-            setInterval(() => sync(false), 250);
+            setInterval(() => sync(false), 200);
         }
 
         function sync(force) {
@@ -143,24 +138,24 @@
             const el = (idx === 2) ? video : (idx === 1 ? audio : null);
             if (!el || !currentStartTime) return;
 
-            const target = ((Date.now() + serverTimeOffset) - currentStartTime) / 1000;
+            // Apple Buffer Ausgleich
+            const appleComp = isIOS ? 350 : 0; 
+            const target = ((Date.now() + serverTimeOffset) - (currentStartTime - appleComp)) / 1000;
             const diff = target - el.currentTime;
 
-            if (force || Math.abs(diff) > 1.0) {
+            if (force || Math.abs(diff) > 0.6) {
                 el.currentTime = target;
                 el.playbackRate = 1.0;
-            } else if (Math.abs(diff) < 0.04) {
-                el.playbackRate = 1.0;
-            } else if (Math.abs(diff) < 0.2) {
-                el.playbackRate = diff > 0 ? 1.03 : 0.97;
+            } else if (Math.abs(diff) > 0.03) {
+                el.playbackRate = diff > 0 ? 1.12 : 0.88; // Etwas aggressiver für Apple
             } else {
-                el.playbackRate = diff > 0 ? 1.07 : 0.93;
+                el.playbackRate = 1.0;
             }
 
             if (el.paused && target > 0 && target < el.duration) {
                 el.play().catch(() => { el.muted = true; el.play(); });
             }
-            statusVal.innerText = Math.round(diff * 1000);
+            statusVal.innerText = Math.round(diff * 1000) + (isIOS ? " (iOS)" : " (Droid)");
         }
     </script>
 </body>
