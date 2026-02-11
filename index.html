@@ -2,187 +2,250 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Hybrid Viewer</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fancy Viewer Final</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
 
     <style>
-        /* --- CORE LAYOUT --- */
-        body { background: #000; margin: 0; overflow: hidden; }
-        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 99999; display: flex; justify-content: center; align-items: center; }
-        #start-btn { padding: 20px 50px; background: cyan; border: none; font-size: 20px; font-weight: bold; cursor: pointer; box-shadow: 0 0 20px cyan; }
-        #debug { position: fixed; top: 5px; left: 5px; color: lime; font-family: monospace; z-index: 10000; font-size: 10px; pointer-events: none; }
-
-        /* --- VIDEO ENGINE (Overlay + Sync) --- */
-        #video-layer {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: #000; z-index: 500; /* Über Reveal, unter UI */
-            opacity: 0; pointer-events: none; transition: opacity 0.5s;
-            display: flex; align-items: center; justify-content: center;
+        :root { 
+            --accent: #00f2ff; 
+            --damage: #ff0055; 
+            --heal: #00ff88;
+            --bg: #050505; 
+            --board-bg: #2b2b2b;
         }
-        #video-layer.active { opacity: 1; pointer-events: all; }
-        video { width: 100%; height: 100%; object-fit: contain; }
+        body { background: var(--bg); overflow: hidden; font-family: 'Inter', sans-serif; }
 
-        /* --- MORPH BOARD STYLES --- */
-        :root { --accent: #00f2ff; }
+        /* --- THE GRID ENGINE --- */
         .morph-container {
-            display: grid; grid-template-columns: repeat(15, 1fr); grid-template-rows: repeat(15, 1fr);
-            gap: 4px; width: 75vmin; height: 75vmin; margin: 0 auto;
-            transition: transform 0.8s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+            display: grid;
+            grid-template-columns: repeat(15, 1fr);
+            grid-template-rows: repeat(15, 1fr);
+            gap: 6px;
+            width: 55vmin; height: 55vmin;
+            margin: 0 auto;
+            padding: 20px;
+            border-radius: 10px;
+            transition: all 1s cubic-bezier(0.2, 0.8, 0.2, 1);
         }
-        .dot { width: 100%; height: 100%; border-radius: 50%; transition: all 0.6s ease; box-shadow: 2px 2px 5px rgba(0,0,0,0.5); }
-        .dot.black { background: radial-gradient(circle at 30% 30%, #444, #000); transform: scale(0.9); }
-        .dot.white { background: radial-gradient(circle at 30% 30%, #fff, #bbb); transform: scale(0.9); }
+
+        .dot { width: 100%; height: 100%; transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+
+        /* --- MODE 1: GO BRETT --- */
+        .mode-go {
+            background: var(--board-bg);
+            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
+            gap: 2px;
+            transform: scale(0.9);
+            border: 1px solid #444;
+        }
+        .mode-go .dot { border-radius: 50%; transform: scale(0.95); }
+        .mode-go .dot.white { 
+            background: radial-gradient(circle at 35% 35%, #ffffff, #d0d0d0); 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+        .mode-go .dot.black { 
+            background: radial-gradient(circle at 30% 30%, #999 0%, #111 25%, #000 100%); 
+            box-shadow: 0 3px 6px rgba(0,0,0,0.8), inset 0 0 2px rgba(255,255,255,0.3);
+        }
+        .mode-go .dot.hidden { 
+            background: transparent; opacity: 0.15; transform: scale(0.1); background-color: #fff; 
+        }
+
+        /* --- MODE 2: QR CODE --- */
+        .mode-qr {
+            background: transparent; box-shadow: none; gap: 4px; transform: scale(1.1); border: none;
+        }
+        .mode-qr .dot { border-radius: 2px; transform: scale(1); }
+        .mode-qr .dot.active { background: var(--accent); box-shadow: 0 0 15px var(--accent); }
+        .mode-qr .dot.inactive { background: rgba(255,255,255,0.05); transform: scale(0.2); border-radius: 50%; }
+
+        /* --- MODE 3: DAMAGE & HEAL --- */
+        .mode-damage .dot.damaged { background: var(--damage) !important; box-shadow: 0 0 20px var(--damage); animation: glitch 0.3s infinite; }
+        .mode-heal .dot.active { transition: background 0.5s; background: var(--heal) !important; box-shadow: 0 0 20px var(--heal); }
+
+        @keyframes glitch { 
+            0% { opacity: 1; transform: translate(0,0) scale(1); }
+            20% { opacity: 0.8; transform: translate(-2px, 2px) scale(0.9); }
+            40% { opacity: 0.9; transform: translate(2px, -2px) scale(1.1); }
+            100% { opacity: 1; transform: translate(0,0) scale(1); }
+        }
+
+        /* --- VIDEO --- */
+        #video-container {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: flex; align-items: center; justify-content: center;
+        }
+        video { width: 100%; height: 100%; object-fit: contain; }
         
-        /* QR Mode */
-        .mode-qr .dot { border-radius: 0%; transform: scale(1); box-shadow: none; background: #222; }
-        .mode-qr .dot.active { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
-        .mode-qr .dot.finder { background: #fff; box-shadow: 0 0 15px #fff; z-index: 2; }
+        /* --- AR MODEL --- */
+        model-viewer { width: 100%; height: 80vh; margin-top: 5vh; --poster-color: transparent; }
+
+        /* Custom AR Button Style */
+        #ar-button {
+            background-color: var(--accent);
+            border-radius: 4px;
+            border: none;
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 24px;
+            font-weight: bold;
+            font-family: 'Inter', sans-serif;
+            color: #000;
+            box-shadow: 0 0 20px var(--accent);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            white-space: nowrap;
+            display: none; /* Wird vom model-viewer aktiviert wenn AR verfügbar ist */
+        }
+        #ar-button:active { transform: translateX(-50%) scale(0.95); }
+
+        /* START OVERLAY */
+        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; transition: opacity 0.5s; }
+        #btn-start { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 20px 50px; font-size: 1.2rem; border-radius: 50px; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; transition: 0.3s; }
+        #btn-start:hover { background: var(--accent); color: #000; box-shadow: 0 0 30px var(--accent); }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay"><button id="start-btn" onclick="initSystem()">INITIALIZE SYSTEM</button></div>
-    <div id="debug">SYNC: <span id="sync-val">IDLE</span></div>
-
-    <div id="video-layer">
-        <video id="sync-video" playsinline webkit-playsinline preload="auto">
-            <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
-        </video>
-    </div>
+    <div id="start-overlay"><button id="btn-start" onclick="initApp()">Initialize Connection</button></div>
 
     <div class="reveal">
         <div class="slides">
-            <section><div id="grid" class="morph-container"></div></section> <section><h2>SYNC ACTIVE</h2></section> <section> <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar camera-controls style="width:100vw; height:80vh;"></model-viewer>
+
+            <section data-auto-animate data-background-transition="zoom">
+                <h3 id="morph-title" style="margin-bottom: 40px; opacity: 0.7; font-weight: 300; letter-spacing: 4px;">ORIGIN</h3>
+                <div id="grid" class="morph-container mode-go"></div>
             </section>
+
+            <section data-auto-animate data-background-transition="zoom">
+                <h3 style="letter-spacing: 5px; color: #fff;">REED-SOLOMON</h3>
+                <p style="color:var(--accent); font-size: 1rem; font-family: monospace;">Reconstructing Data Stream...</p>
+            </section>
+
+            <section data-background="#000">
+                <div id="video-container">
+                    <video id="main-video" playsinline webkit-playsinline preload="auto">
+                        <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
+                    </video>
+                </div>
+            </section>
+
+            <section>
+                <h3 style="opacity: 0.5; font-size: 1.5rem;">AR EXPERIENCE</h3>
+                <model-viewer 
+                    src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
+                    ar 
+                    ar-modes="webxr scene-viewer quick-look" 
+                    camera-controls 
+                    auto-rotate 
+                    shadow-intensity="1">
+                    
+                    <button slot="ar-button" id="ar-button">
+                        👋 IN DEINEM RAUM PLATZIEREN
+                    </button>
+                </model-viewer>
+            </section>
+
         </div>
     </div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
-    <script src="config.js"></script>
+    <script src="config.js"></script> 
 
     <script>
-        // 1. SETUP REVEAL
+        // Reveal.js - Benutzersteuerung komplett blockieren
         const deck = new Reveal();
-        deck.initialize({ controls: false, progress: false, transition: 'fade', disableLayout: true });
+        deck.initialize({ 
+            controls: false, progress: false, center: true, transition: 'fade',
+            keyboard: false, touch: false, scroll: false, help: false, mouseWheel: false 
+        });
 
-        // 2. SETUP BOARD (Visuals)
         const grid = document.getElementById('grid');
         const dots = [];
-        for(let i=0; i<225; i++) {
-            let d = document.createElement('div'); d.className = 'dot hidden';
-            grid.appendChild(d); dots.push(d);
+        const gridSize = 15;
+
+        // Init Grid
+        for(let i=0; i<gridSize*gridSize; i++) {
+            let d = document.createElement('div');
+            d.className = 'dot';
+            d.style.transitionDelay = (Math.random() * 0.4) + 's';
+            grid.appendChild(d);
+            dots.push(d);
         }
 
-        function renderVisuals(mode) {
-            const vLayer = document.getElementById('video-layer');
-            const vid = document.getElementById('sync-video');
-            
-            // Video Layer Management
-            if(mode === 'video') {
-                vLayer.classList.add('active');
-            } else {
-                vLayer.classList.remove('active');
-                vid.pause(); // Video stoppen wenn nicht aktiv
-                currentSyncStart = 0; // Sync Engine pausieren
-            }
+        function clearClasses() { grid.classList.remove('mode-go', 'mode-qr', 'mode-damage', 'mode-heal'); }
 
-            // Board Logic
-            if(mode === 'go') {
-                grid.classList.remove('mode-qr');
-                dots.forEach(d => d.className = Math.random()>0.5 ? 'dot black' : 'dot white');
-            } 
-            else if(mode === 'qr') {
-                grid.classList.add('mode-qr');
-                dots.forEach((d, i) => {
-                    let x=i%15, y=Math.floor(i/15);
-                    let isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
-                    d.className = isFinder ? 'dot finder' : (Math.random()>0.6 ? 'dot active' : 'dot');
-                });
-            }
+        function renderGo() {
+            clearClasses(); grid.classList.add('mode-go');
+            document.getElementById('morph-title').innerText = "1992: THE ORIGIN";
+            dots.forEach(d => {
+                d.className = 'dot'; 
+                let r = Math.random();
+                if(r > 0.8) d.classList.add('black');
+                else if(r > 0.65) d.classList.add('white');
+                else d.classList.add('hidden');
+            });
         }
 
-        // 3. HIGH PERFORMANCE SYNC ENGINE
-        const video = document.getElementById("sync-video");
-        const statusVal = document.getElementById("sync-val");
-        let pubnub;
-        let serverTimeOffset = 0;
-        let currentSyncStart = 0; // Timestamp wann das Video gestartet wurde
-        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+        function renderQR() {
+            clearClasses(); grid.classList.add('mode-qr');
+            document.getElementById('morph-title').innerText = "THE MATRIX";
+            dots.forEach((d, i) => {
+                d.className = 'dot';
+                const x = i % gridSize;
+                const y = Math.floor(i / gridSize);
+                const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
+                const isHollow = (x===1||x===2) && (y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
+                if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) d.classList.add('active');
+                else d.classList.add('inactive');
+            });
+        }
 
-        async function initSystem() {
-            document.getElementById("start-overlay").style.display = 'none';
-            // Unlock Audio Context
-            video.muted = true; 
-            try { await video.play(); video.pause(); video.currentTime = 0; video.muted = false; } catch(e){}
+        function renderDamage() {
+            grid.classList.add('mode-damage');
+            dots.forEach(d => { if(d.classList.contains('active') && Math.random() > 0.6) { d.classList.remove('active'); d.classList.add('damaged'); }});
+        }
 
-            renderVisuals('go'); // Start State
+        function renderHeal() {
+            grid.classList.remove('mode-damage'); grid.classList.add('mode-heal');
+            dots.forEach(d => { if(d.classList.contains('damaged')) { d.classList.remove('damaged'); d.classList.add('active'); }});
+            setTimeout(() => { grid.classList.remove('mode-heal'); }, 1200);
+        }
 
-            pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "viewer_" + Math.random() });
-            
-            // Time Calibration
-            const res = await pubnub.time();
-            serverTimeOffset = Math.floor(res.timetoken / 10000) - Date.now();
-            console.log("Time Offset:", serverTimeOffset);
+        function playVideo() {
+            const v = document.getElementById('main-video');
+            v.currentTime = 0; v.muted = false;
+            v.play().catch(e => console.log("Autoplay blocked, waiting for interaction", e));
+        }
 
+        function initApp() {
+            document.getElementById('start-overlay').style.opacity = '0';
+            setTimeout(() => { document.getElementById('start-overlay').style.display = 'none'; }, 500);
+            renderGo();
+
+            const pubnub = new PubNub({ subscribeKey: Pub_Nub_api_Subscribe, userId: "view_" + Math.random() });
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
-                    
-                    // Slide Navigation
-                    if(msg.slideIndex !== undefined) deck.slide(msg.slideIndex);
-                    
-                    // Visual Action
-                    if(msg.action) renderVisuals(msg.action);
-
-                    // Sync Signal
-                    if(msg.action === 'video' && msg.startTime) {
-                        currentSyncStart = msg.startTime;
-                        // Sofortiger Startversuch für Responsiveness
-                        syncLoop(true); 
-                    }
+                    // Sync Slide
+                    if(msg.slide !== undefined && deck.getIndices().h !== msg.slide) deck.slide(msg.slide);
+                    // Sync Actions
+                    if(msg.action === "morph_go") renderGo();
+                    if(msg.action === "morph_qr") renderQR();
+                    if(msg.action === "damage") renderDamage();
+                    if(msg.action === "heal") renderHeal();
+                    if(msg.action === "play_video") playVideo();
                 }
             });
             pubnub.subscribe({ channels: [My_Channel_Name] });
-
-            // Start Sync Heartbeat
-            setInterval(() => syncLoop(false), 200);
-        }
-
-        function syncLoop(force) {
-            // Nur syncen, wenn wir im Video-Modus sind und eine Startzeit haben
-            if (!currentSyncStart || !document.getElementById('video-layer').classList.contains('active')) return;
-
-            const now = Date.now() + serverTimeOffset;
-            const appleComp = isIOS ? 350 : 0; // iOS Buffer Kompensation
-            
-            // Soll-Zeit berechnen: (Jetzt - Startzeit) = Wie lange läuft das Video schon?
-            let targetTime = (now - (currentSyncStart - appleComp)) / 1000;
-
-            if (targetTime < 0) targetTime = 0; // Video sollte noch nicht laufen
-            
-            const diff = targetTime - video.currentTime;
-            statusVal.innerText = Math.round(diff * 1000) + "ms";
-
-            // Logic aus deinem File:
-            if (force || Math.abs(diff) > 0.6) {
-                // Harter Sprung bei großem Drift
-                video.currentTime = targetTime;
-                video.playbackRate = 1.0;
-            } else if (Math.abs(diff) > 0.05) {
-                // Sanfter Pitch wenn Drift klein
-                video.playbackRate = diff > 0 ? 1.15 : 0.85; 
-            } else {
-                video.playbackRate = 1.0;
-            }
-
-            if (video.paused) {
-                video.play().catch(e => console.log("Autoplay blockiert", e));
-            }
         }
     </script>
 </body>
