@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Fancy Viewer Final</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
@@ -16,7 +16,7 @@
             --bg: #050505; 
             --board-bg: #2b2b2b;
         }
-        body { background: var(--bg); overflow: hidden; font-family: 'Inter', sans-serif; }
+        body { background: var(--bg); overflow: hidden; font-family: 'Inter', sans-serif; margin: 0; }
 
         /* --- GRID STYLES --- */
         .morph-container {
@@ -32,6 +32,7 @@
         }
         .dot { width: 100%; height: 100%; transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
+        /* Modi Styles */
         .mode-go { background: var(--board-bg); box-shadow: 0 20px 60px rgba(0,0,0,0.6); gap: 2px; transform: scale(0.9); border: 1px solid #444; }
         .mode-go .dot { border-radius: 50%; transform: scale(0.95); }
         .mode-go .dot.white { background: radial-gradient(circle at 35% 35%, #ffffff, #d0d0d0); box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
@@ -53,21 +54,25 @@
             100% { opacity: 1; transform: translate(0,0) scale(1); }
         }
 
-        /* --- VIDEO FIX --- */
-        /* Wir entfernen den absoluten Container und stylen das Video direkt */
-        .video-wrapper {
-            width: 100%;
-            height: 100vh; /* Volle Höhe */
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        /* --- VIDEO OVERLAY (FIXED MOBILE ISSUE) --- */
+        #video-overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: #000;
+            z-index: 5000; /* Über den Slides */
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; /* Unsichtbar und klick-durchlässig wenn inaktiv */
+            transition: opacity 0.5s ease;
+        }
+        #video-overlay.active {
+            opacity: 1; pointer-events: all;
         }
         video { 
-            max-width: 100%; 
-            max-height: 100%; 
-            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+            width: 100%; height: 100%; 
+            object-fit: contain; /* Video behält Format, schwarze Balken möglich */
         }
-        
+
+        /* --- AR & UI --- */
         model-viewer { width: 100%; height: 80vh; margin-top: 5vh; --poster-color: transparent; }
         #ar-button { background-color: var(--accent); border-radius: 4px; border: none; position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 12px 24px; font-weight: bold; color: #000; box-shadow: 0 0 20px var(--accent); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; display: none; }
 
@@ -78,7 +83,13 @@
 </head>
 <body>
 
-    <div id="start-overlay"><button id="btn-start" onclick="initApp()">Initialize Connection</button></div>
+    <div id="start-overlay"><button id="btn-start" onclick="initApp()">Initialize System</button></div>
+
+    <div id="video-overlay">
+        <video id="main-video" playsinline webkit-playsinline preload="auto">
+            <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
+        </video>
+    </div>
 
     <div class="reveal">
         <div class="slides">
@@ -94,12 +105,7 @@
             </section>
 
             <section data-background="#000">
-                <div class="video-wrapper">
-                    <video id="main-video" playsinline webkit-playsinline controls preload="auto">
-                        <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
-                        Dein Browser unterstützt dieses Video nicht.
-                    </video>
-                </div>
+                <h3 style="opacity: 0.5;">VIDEO TRANSMISSION</h3>
             </section>
 
             <section>
@@ -118,23 +124,16 @@
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
 
     <script>
+        // Init Reveal
         const deck = new Reveal();
         deck.initialize({ controls: false, progress: false, center: true, transition: 'fade', keyboard: false, touch: false, scroll: false, help: false, mouseWheel: false });
 
-        // --- AUTOMATISCHER VIDEO STOP ---
-        // Wenn die Slide gewechselt wird (z.B. zurück zum Start), Video stoppen!
-        deck.on('slidechanged', event => {
-            const v = document.getElementById('main-video');
-            // Wenn wir NICHT auf der Video-Slide (Index 2) sind:
-            if(event.indexh !== 2) {
-                v.pause();
-                v.currentTime = 0;
-            }
-        });
-
+        // --- GRID & ANIMATION VARIABLES ---
         const grid = document.getElementById('grid');
         const dots = [];
         const gridSize = 15;
+
+        // Grid erstellen
         for(let i=0; i<gridSize*gridSize; i++) {
             let d = document.createElement('div');
             d.className = 'dot';
@@ -143,6 +142,7 @@
             dots.push(d);
         }
 
+        // --- HELPER FUNCTIONS ---
         function clearClasses() { grid.classList.remove('mode-go', 'mode-qr', 'mode-damage', 'mode-heal'); }
 
         function renderGo() {
@@ -182,47 +182,94 @@
             setTimeout(() => { grid.classList.remove('mode-heal'); }, 1200);
         }
 
-        function playVideo() {
+        // --- VIDEO SYNC LOGIC (The Fix) ---
+        function stopVideo() {
             const v = document.getElementById('main-video');
-            v.currentTime = 0; 
-            v.muted = false; // Versuch Ton anzuschalten
+            const overlay = document.getElementById('video-overlay');
+            
+            overlay.classList.remove('active'); // Overlay ausblenden
+            v.pause();
+        }
+
+        function playSyncedVideo(serverStartTime) {
+            const v = document.getElementById('main-video');
+            const overlay = document.getElementById('video-overlay');
+            
+            // 1. Overlay sichtbar machen
+            overlay.classList.add('active');
+
+            // 2. Latenz berechnen (Wie viel Zeit ist seit dem Klick vergangen?)
+            const now = Date.now();
+            // Latenz in Sekunden
+            const latencySeconds = (now - serverStartTime) / 1000;
+            
+            console.log("Sync latency:", latencySeconds);
+
+            // 3. Wenn Latenz positiv (normal), Video vorspulen
+            if (latencySeconds > 0) {
+                v.currentTime = latencySeconds;
+            } else {
+                v.currentTime = 0;
+            }
+
+            // 4. Abspielen
+            v.muted = false; // Versuch Sound einzuschalten
             v.play().catch(e => {
-                console.log("Autoplay blocked", e);
-                // Fallback: Muted abspielen, falls Browser Sound blockiert
+                console.warn("Auto-Play blocked. Trying muted.", e);
                 v.muted = true;
                 v.play();
             });
         }
 
+        // --- INITIALIZATION ---
         function initApp() {
+            // UI Aufräumen
             document.getElementById('start-overlay').style.opacity = '0';
             setTimeout(() => { document.getElementById('start-overlay').style.display = 'none'; }, 500);
             renderGo();
 
+            // iOS HACK: Video-Engine aufwärmen
+            // Wir spielen das Video kurz an und pausieren sofort.
+            // Das sagt dem iPhone: "User hat interagiert, Video darf später Sound abspielen"
+            const v = document.getElementById('main-video');
+            v.play().then(() => {
+                v.pause();
+                v.currentTime = 0;
+            }).catch((e) => console.log("Silent init failed", e));
+
+
+            // PubNub Setup
             const pubnub = new PubNub({ 
                 subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', 
-                userId: "view_client" 
+                userId: "viewer_" + Math.floor(Math.random() * 1000)
             });
             
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
-                    // SLIDE SYNC (Geht jetzt auch zurück!)
-                    if(msg.slide !== undefined && deck.getIndices().h !== msg.slide) {
+
+                    // Slide Navigation
+                    if(msg.slide !== undefined) {
                         deck.slide(msg.slide);
+                        // Wenn wir NICHT im Video-Modus sein sollen, Video sicherheitshalber stoppen
+                        if (msg.slide !== 2) { 
+                            stopVideo();
+                        }
                     }
 
+                    // Aktionen
                     if(msg.action === "morph_go") renderGo();
                     if(msg.action === "morph_qr") renderQR();
                     if(msg.action === "damage") renderDamage();
                     if(msg.action === "heal") renderHeal();
                     
-                    // Video nur abspielen wenn explizit angefordert
-                    if(msg.action === "play_video") {
-                        playVideo();
+                    // Video Sync
+                    if(msg.action === "play_video" && msg.timestamp) {
+                        playSyncedVideo(msg.timestamp);
                     }
                 }
             });
+
             pubnub.subscribe({ channels: ['PrasiW.Woche'] });
         }
     </script>
