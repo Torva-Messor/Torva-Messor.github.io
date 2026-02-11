@@ -7,32 +7,45 @@
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
     <style>
         body { font-family: 'Inter', sans-serif; background: #111; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
-        h1 { color: #00f2ff; font-size: 1.5rem; margin-bottom: 30px; text-align: center; }
+        h1 { color: #00f2ff; font-size: 1.5rem; margin-bottom: 30px; text-align: center; letter-spacing: 2px; }
+        
         .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 400px; }
-        button { background: #222; border: 1px solid #444; color: white; padding: 20px; border-radius: 10px; font-size: 1rem; cursor: pointer; transition: all 0.2s; }
+        
+        button { 
+            background: #222; border: 1px solid #444; color: white; 
+            padding: 20px; border-radius: 10px; font-size: 1rem; 
+            cursor: pointer; transition: all 0.2s; touch-action: manipulation;
+            font-weight: bold;
+        }
         button:active { transform: scale(0.95); background: #333; }
         
         .btn-action { border-color: #00f2ff; color: #00f2ff; }
-        .btn-video { border-color: #fff; background: #333; } /* Video Button etwas hervorgehoben */
+        .btn-video { border-color: #fff; background: #333; color: #fff; }
         .btn-damage { border-color: #ff0055; color: #ff0055; }
         .btn-heal { border-color: #00ff88; color: #00ff88; }
+        
         .full-width { grid-column: span 2; }
+        
+        #status { font-size: 0.8rem; color: #666; margin-top: 20px; font-family: monospace; }
     </style>
 </head>
 <body>
 
-    <h1 id="status">TORVA CONTROLLER</h1>
+    <h1>TORVA CONTROL</h1>
 
     <div class="button-grid">
-        <button class="btn-action" onclick="sendCommand(0, 'morph_go')">⬅️ GO Brett (Reset)</button>
-        <button class="btn-action" onclick="sendCommand(0, 'morph_qr')">QR Code</button>
+        <button class="btn-action" onclick="sendCommand(0, 'morph_go')">⬅️ 1. GO Brett</button>
+        <button class="btn-action" onclick="sendCommand(1, 'morph_qr')">➡️ 2. QR Code</button>
         
-        <button class="btn-damage" onclick="sendCommand(null, 'damage')">Damage</button>
-        <button class="btn-heal" onclick="sendCommand(null, 'heal')">Heal</button>
+        <button class="btn-damage" onclick="sendCommand(null, 'damage')">⚡ Damage</button>
+        <button class="btn-heal" onclick="sendCommand(null, 'heal')">❤️ Heal</button>
         
-        <button class="btn-video full-width" onclick="sendCommand(2, 'play_video')">🎥 Play Video</button>
-        <button class="btn-video full-width" onclick="sendCommand(3, null)">🤖 AR Object</button>
+        <button class="btn-video full-width" onclick="sendVideoCommand()">🎥 3. START VIDEO (SYNC)</button>
+        
+        <button class="btn-video full-width" onclick="sendCommand(3, null)">🤖 4. AR Object</button>
     </div>
+
+    <div id="status">Ready</div>
 
     <script>
         // DEINE KEYS
@@ -46,25 +59,42 @@
             userId: "presenter_mobile"
         });
 
+        // Standard Befehl senden
         function sendCommand(slideIndex, actionName) {
             const payload = {};
-            // Wenn slide 0 ist, sende 0. Wenn null, sende nichts.
             if (slideIndex !== null) payload.slide = slideIndex;
             if (actionName !== null) payload.action = actionName;
-            
-            const statusEl = document.getElementById('status');
-            statusEl.innerText = "Sende...";
+            publish(payload);
+        }
 
+        // Spezieller Video Befehl mit Zeitstempel
+        function sendVideoCommand() {
+            const payload = {
+                slide: 2, // Zur Video Slide wechseln
+                action: 'play_video',
+                timestamp: Date.now() // WICHTIG: Server-Zeit senden
+            };
+            publish(payload);
+        }
+
+        function publish(payload) {
+            const statusEl = document.getElementById('status');
+            statusEl.innerText = "Sending...";
+            
             pubnub.publish({
                 channel: channelName,
                 message: payload
             }, (status) => {
                 if (status.error) {
-                    statusEl.innerText = "FEHLER!";
-                    console.error(status);
+                    statusEl.innerText = "ERROR: " + status.category;
+                    statusEl.style.color = "red";
                 } else {
-                    statusEl.innerText = "OK";
-                    setTimeout(() => { statusEl.innerText = "TORVA CONTROLLER"; }, 500);
+                    statusEl.innerText = "Sent OK";
+                    statusEl.style.color = "#00ff88";
+                    setTimeout(() => { 
+                        statusEl.innerText = "Ready"; 
+                        statusEl.style.color = "#666";
+                    }, 1000);
                 }
             });
         }
