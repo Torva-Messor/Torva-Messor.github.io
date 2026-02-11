@@ -2,45 +2,71 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>PRESENTER</title>
+    <title>MASTER CONTROL</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
     <style>
-        body { background: #f4f4f4; }
-        .controls-area { position: fixed; top: 0; width: 100%; background: #222; color: white; padding: 10px; z-index: 100; display: flex; justify-content: space-between; align-items: center; font-family: monospace; }
-        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: red; display: inline-block; }
-        .online { background: #0f0; }
-        .reveal { margin-top: 50px; }
-        /* Vorschau Styling */
-        section { border: 1px solid #ddd; }
+        /* UI für den Presenter - Dunkel, damit das Gesicht nicht angestrahlt wird */
+        body { background: #111; color: #fff; font-family: monospace; }
+        
+        .status-bar { 
+            position: fixed; top: 0; left: 0; width: 100%; 
+            background: #222; border-bottom: 1px solid #333;
+            padding: 10px 20px; z-index: 100; 
+            display: flex; justify-content: space-between; align-items: center; 
+            font-size: 0.8rem;
+        }
+
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #555; display: inline-block; margin-right: 5px;}
+        .online { background: #00f2ff; box-shadow: 0 0 5px #00f2ff; }
+
+        .reveal { margin-top: 60px; }
+        
+        /* Visuelle Hilfe für den Presenter */
+        .slide-hint { font-size: 0.6em; color: #888; border: 1px dashed #444; padding: 10px; margin-top: 20px; }
+        .active-action { color: #00f2ff; border-color: #00f2ff; }
     </style>
 </head>
 <body>
 
-    <div class="controls-area">
-        <div><span id="dot" class="status-dot"></span> STATUS</div>
-        <div id="current-slide-info">Slide 0</div>
+    <div class="status-bar">
+        <div><span id="dot" class="status-dot"></span> LIVE LINK</div>
+        <div id="slide-info">WAITING...</div>
     </div>
 
     <div class="reveal">
         <div class="slides">
-            <section><h1>1. Intro</h1></section>
-            <section><h1>2. Definition</h1></section>
+            
             <section>
-                <h1>3. Struktur (Animiert)</h1>
-                <p class="fragment">Klick 1: Position</p>
-                <p class="fragment">Klick 2: Ausrichtung</p>
-                <p class="fragment">Klick 3: Timing</p>
+                <h3>1. INTRO</h3>
+                <div class="slide-hint">Zuschauer sieht: Titel "THE LINK"</div>
             </section>
-            <section><h1>4. Fehlerkorrektur</h1></section>
-            <section><h1>5. Geschichte</h1></section>
-            <section style="background: #e3f2fd;">
-                <h1>6. VIDEO SYNC</h1>
-                <p>Sync startet automatisch</p>
+
+            <section>
+                <h3>2. MORPHING</h3>
+                
+                <div class="slide-hint" id="hint-go">
+                    STATUS: <b>GO BRETT</b> (History)
+                </div>
+
+                <div class="fragment" data-fragment-index="0">
+                    <div class="slide-hint active-action">
+                        >>> ACTION: <b>MORPH TO QR</b>
+                    </div>
+                </div>
             </section>
-            <section style="background: #e8f5e9;">
-                <h1>7. AR MODELL</h1>
+
+            <section>
+                <h3>3. VIDEO SYNC</h3>
+                <div class="slide-hint">Video startet automatisch synchronisiert.</div>
             </section>
+
+            <section>
+                <h3>4. AR MODELL</h3>
+                <div class="slide-hint">Zuschauer sieht: Astronaut / AR Button</div>
+            </section>
+
         </div>
     </div>
 
@@ -49,56 +75,85 @@
     <script src="config.js"></script>
 
     <script>
+        // Initialisierung
         const deck = new Reveal();
-        deck.initialize({ controls: true, progress: true, hash: true });
+        deck.initialize({ 
+            controls: true, 
+            progress: true, 
+            hash: true,
+            fragments: true // Wichtig für den Morph-Trigger
+        });
 
         const pubnub = new PubNub({
             subscribeKey: Pub_Nub_api_Subscribe,
-            publishKey: Pub_Nub_api_Publish,
+            publishKey: Pub_Nub_api_Publish, // Wichtig: Hier muss der Publish Key rein!
             userId: "presenter_master"
         });
 
+        // Status Anzeige
         pubnub.addListener({
             status: (s) => {
                 if (s.category === "PNConnectedCategory") {
                     document.getElementById("dot").classList.add("online");
+                    document.getElementById("slide-info").innerText = "CONNECTED";
                 }
             }
         });
         pubnub.subscribe({ channels: [My_Channel_Name] });
 
-        // Funktion die ALLES sendet (Slide Index UND Fragment Index)
-        async function sendUpdate() {
-            const state = deck.getState();
-            const indices = deck.getIndices();
-            
-            document.getElementById("current-slide-info").innerText = 
-                `Slide ${indices.h} / Step ${indices.f !== undefined ? indices.f : 0}`;
 
-            let startTime = null;
-            // Video auf Index 5 (6. Folie)
-            if (indices.h === 5) {
-                try {
-                    const t = await pubnub.time();
-                    startTime = Math.floor(t.timetoken / 10000) + 800;
-                } catch(e) { startTime = Date.now() + 800; }
+        // HAUPTFUNKTION: Sendet Befehle an den Viewer
+        async function broadcastState() {
+            const indices = deck.getIndices();
+            const currentSlide = indices.h;
+            const currentFrag = indices.f !== undefined ? indices.f : -1;
+
+            document.getElementById("slide-info").innerText = `SLIDE ${currentSlide} / STEP ${currentFrag}`;
+
+            // Das Nachrichten-Objekt vorbereiten
+            let payload = {
+                slide: currentSlide,    // Welche Folie?
+                action: null,           // Spezialaktion? (morph)
+                state: null,            // Zustand? (go oder qr)
+                startTime: null         // Für Video Sync
+            };
+
+            // LOGIK FÜR SLIDE 1 (MORPHING)
+            if (currentSlide === 1) {
+                payload.action = "morph";
+                // Wenn Fragment 0 sichtbar ist (wir haben einmal geklickt), dann QR. Sonst Go.
+                if (currentFrag >= 0) {
+                    payload.state = "qr"; 
+                } else {
+                    payload.state = "go";
+                }
             }
 
+            // LOGIK FÜR SLIDE 2 (VIDEO)
+            if (currentSlide === 2) {
+                try {
+                    // Wir holen die Atomzeit vom PubNub Server für perfekte Sync
+                    const t = await pubnub.time();
+                    // Startzeit = Jetzt + 1 Sekunde Puffer (damit alle Clients gleichzeitig starten)
+                    payload.startTime = Math.floor(t.timetoken / 10000) + 1000;
+                } catch(e) { 
+                    payload.startTime = Date.now() + 1000; 
+                }
+            }
+
+            console.log("Sending:", payload);
+
+            // Senden
             pubnub.publish({
                 channel: My_Channel_Name,
-                message: { 
-                    index: indices.h,
-                    fragment: indices.f !== undefined ? indices.f : -1, // Sende -1 wenn keine Animation aktiv ist
-                    startTime: startTime
-                },
-                storeInHistory: true
+                message: payload
             });
         }
 
-        // Wir feuern bei JEDER Änderung (Folie oder Animationsschritt)
-        deck.on('slidechanged', sendUpdate);
-        deck.on('fragmentshown', sendUpdate);
-        deck.on('fragmenthidden', sendUpdate);
+        // Event Listener: Wir senden bei JEDER Bewegung
+        deck.on('slidechanged', broadcastState);
+        deck.on('fragmentshown', broadcastState); // Wenn du "Weiter" klickst für den Morph
+        deck.on('fragmenthidden', broadcastState); // Wenn du zurück gehst
 
     </script>
 </body>
