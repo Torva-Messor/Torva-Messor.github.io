@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Viewer AR Edition</title>
+    <title>Torva Viewer AR Edition - Final</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
@@ -15,18 +15,16 @@
             --bg: #050505; 
             --board-bg: #2b2b2b;
             --matrix-green: #0f0;
-            --ar-slide-bg: #1a1a1a; /* Grauer Hintergrund für AR Slide */
         }
         body { background: var(--bg); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
 
-        /* --- GRID BACKGROUND --- */
+        /* Raster-Hintergrund */
         #background-layer {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
             display: flex; justify-content: center; align-items: center;
             z-index: 1; 
             pointer-events: none;
-            transition: opacity 0.5s ease;
         }
 
         .morph-container {
@@ -36,35 +34,30 @@
             gap: 6px;
             width: 55vmin; height: 55vmin;
         }
-        .dot { width: 100%; height: 100%; transition: background 0.3s, transform 0.8s; }
+        .dot { width: 100%; height: 100%; transition: background 0.3s; }
 
-        .mode-go { background: var(--board-bg); gap: 2px; transform: scale(0.9); border: 1px solid #444; border-radius: 4px; padding: 10px; }
-        .mode-go .dot { border-radius: 50%; transform: scale(0.95); }
-        .mode-go .dot.white { background: radial-gradient(circle at 35% 35%, #fff, #d0d0d0); }
-        .mode-go .dot.black { background: radial-gradient(circle at 30% 30%, #333, #000); }
-        .mode-go .dot.hidden { opacity: 0.1; transform: scale(0.1); background: #fff; }
+        .mode-go { background: var(--board-bg); gap: 2px; padding: 10px; border-radius: 4px; }
+        .mode-go .dot { border-radius: 50%; transform: scale(0.9); }
+        .mode-go .dot.white { background: #fff; }
+        .mode-go .dot.black { background: #000; }
+        .mode-go .dot.hidden { opacity: 0.1; }
 
-        .mode-qr { background: transparent; gap: 4px; transform: scale(1.1); border: none; padding: 0; }
-        .mode-qr .dot { border-radius: 2px; transform: scale(1); }
-        .mode-qr .dot.active { background: var(--accent); box-shadow: 0 0 10px var(--accent); }
+        .mode-qr { background: transparent; gap: 4px; }
+        .mode-qr .dot { border-radius: 2px; }
+        .mode-qr .dot.active { background: var(--accent); }
         .mode-qr .dot.inactive { background: rgba(255,255,255,0.05); transform: scale(0.2); }
-        .mode-qr .dot.damaged { background: var(--damage) !important; box-shadow: 0 0 15px var(--damage); }
+        .mode-qr .dot.damaged { background: var(--damage) !important; box-shadow: 0 0 10px var(--damage); }
 
-        /* --- AR SLIDE SPEZIFISCH --- */
-        .ar-section {
-            background-color: var(--ar-slide-bg) !important;
-            height: 100vh !important;
-            display: flex !important;
-            flex-direction: column !important;
-            align-items: center !important;
-            justify-content: center !important;
+        /* AR Slide Fixes */
+        .ar-slide {
+            background-color: #1a1a1a !important; /* Massives Grau */
+            z-index: 100 !important;
         }
 
         model-viewer {
             width: 100%;
-            height: 70vh;
+            height: 65vh;
             --poster-color: transparent;
-            z-index: 10;
         }
         
         .ar-trigger-button {
@@ -75,21 +68,14 @@
             font-weight: bold;
             border-radius: 50px;
             cursor: pointer;
-            box-shadow: 0 0 20px var(--accent);
-            text-transform: uppercase;
-            animation: pulse 2s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); }
-            50% { transform: scale(1.05); }
-            100% { transform: scale(1); }
+            box-shadow: 0 0 15px var(--accent);
         }
 
         #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
-        #btn-start { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 20px 50px; font-size: 1.2rem; border-radius: 50px; cursor: pointer; }
-        .matrix-text { color: var(--matrix-green); font-size: 0.9rem; margin-top: 55vh; background: rgba(0,0,0,0.7); padding: 10px; display: inline-block; }
-        .reveal { z-index: 2; }
+        #btn-start { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 20px 50px; border-radius: 50px; cursor: pointer; }
+        
+        .reveal { z-index: 5; }
+        .matrix-text { color: var(--matrix-green); font-size: 0.9rem; margin-top: 60vh; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid var(--matrix-green); }
     </style>
 </head>
 <body>
@@ -102,20 +88,23 @@
 
     <div class="reveal">
         <div class="slides">
-            <section><h3>ORIGIN</h3></section>
-            <section><div class="matrix-text" id="qr-status-text">> MATRIX_READY</div></section>
-            <section data-background="#000"><h3>VIDEO TRANSMISSION</h3></section>
+            <section><h2>ORIGIN</h2></section>
+            
+            <section>
+                <div class="matrix-text" id="qr-status-text">> SIGNAL_STABLE</div>
+            </section>
 
-            <section class="ar-section">
-                <h2 style="color: white; letter-spacing: 3px;">DISCOVERY</h2>
+            <section data-background="#000"><h2>VIDEO TRANSMISSION</h2></section>
+
+            <section class="ar-slide">
+                <h2 style="color: white; margin-top: 20px;">DISCOVERY</h2>
                 <model-viewer 
                     id="astronaut-model"
                     src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
                     ar ar-modes="webxr scene-viewer quick-look" 
                     camera-controls auto-rotate shadow-intensity="1">
-                    <button slot="ar-button" class="ar-trigger-button">🚀 AR IN DEINEM RAUM</button>
+                    <button slot="ar-button" class="ar-trigger-button">🚀 AR STARTEN</button>
                 </model-viewer>
-                <p style="color: rgba(255,255,255,0.5); font-size: 0.8rem;">Modell wird im Raum platziert</p>
             </section>
         </div>
     </div>
@@ -139,30 +128,27 @@
             dots.push(d);
         }
 
-        // PRÄZISE PRÜFUNG: Schützt Finder Patterns (7x7 Ecken) und Version Info
-        function isProtectedZone(x, y) {
-            if (x < 7 && y < 7) return true;   // Oben Links
-            if (x > 7 && y < 7) return true;   // Oben Rechts
-            if (x < 7 && y > 7) return true;   // Unten Links
-            // Versions- / Formatinfos liegen oft an den Rändern der Finder Patterns
-            if ((x === 8 && y < 7) || (x < 7 && y === 8)) return true; 
+        // Hardcoded Safe-Zones: Finder Patterns dürfen NIEMALS rot werden
+        function isStrictSafe(x, y) {
+            if (x < 5 && y < 5) return true;   // Oben Links
+            if (x > 9 && y < 5) return true;   // Oben Rechts
+            if (x < 5 && y > 9) return true;   // Unten Links
             return false;
         }
 
         function renderGo() {
             grid.className = 'morph-container mode-go';
             dots.forEach(d => {
-                d.className = 'dot'; 
+                d.className = 'dot';
                 let r = Math.random();
                 if(r > 0.8) d.classList.add('black');
-                else if(r > 0.65) d.classList.add('white');
+                else if(r > 0.6) d.classList.add('white');
                 else d.classList.add('hidden');
             });
         }
 
         function renderQR() {
             grid.className = 'morph-container mode-qr';
-            damageStage = 0;
             dots.forEach((d, i) => {
                 d.className = 'dot';
                 const x = i % 15; const y = Math.floor(i / 15);
@@ -175,32 +161,33 @@
 
         function renderDamage() {
             damageStage++;
-            const percentages = [0.07, 0.15, 0.20, 0.25, 0.30, 0.35]; 
-            let target = percentages[Math.min(damageStage - 1, 5)];
-            
-            const damageableDots = dots.filter((d, i) => {
+            const steps = [0.07, 0.15, 0.22, 0.28, 0.32, 0.35];
+            let targetRatio = steps[Math.min(damageStage - 1, 5)];
+
+            // Nur Dots, die active sind UND NICHT in der Safe-Zone
+            const dataDots = dots.filter((d, i) => {
                 const x = i % 15; const y = Math.floor(i / 15);
-                return d.classList.contains('active') && !isProtectedZone(x, y);
+                return d.classList.contains('active') && !isStrictSafe(x, y);
             });
 
-            const shuffled = damageableDots.sort(() => 0.5 - Math.random());
-            let count = Math.floor(damageableDots.length * target);
-            
-            for(let i = 0; i < count; i++) {
-                if(shuffled[i]) shuffled[i].classList.add('damaged');
-            }
-            document.getElementById('qr-status-text').innerHTML = `> CORRUPTION: ${Math.floor(target*100)}%<br>> CRITICAL_ZONES: SECURED`;
+            // Mischen und beschädigen
+            const shuffled = dataDots.sort(() => 0.5 - Math.random());
+            const limit = Math.floor(dataDots.length * targetRatio);
+
+            shuffled.forEach((d, index) => {
+                if (index < limit) d.classList.add('damaged');
+            });
+
+            document.getElementById('qr-status-text').innerHTML = `> CORRUPTION: ${Math.floor(targetRatio * 100)}%<br>> FINDER_PATTERNS: SECURED`;
         }
 
         deck.on('slidechanged', event => {
             if (event.indexh === 3) {
-                // EXTREM WICHTIG: Komplett entfernen für AR Slide
-                backgroundLayer.style.display = 'none'; 
+                backgroundLayer.style.visibility = 'hidden'; // Komplett weg
             } else {
-                backgroundLayer.style.display = 'flex';
-                backgroundLayer.style.opacity = 1;
+                backgroundLayer.style.visibility = 'visible';
                 if (event.indexh === 0) renderGo();
-                else if (event.indexh === 1) renderQR();
+                if (event.indexh === 1) renderQR();
             }
         });
 
@@ -210,10 +197,12 @@
             const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v_" + Date.now() });
             pubnub.addListener({
                 message: (m) => {
-                    const msg = m.message;
-                    if(msg.slide !== undefined) deck.slide(msg.slide);
-                    if(msg.action === "damage") renderDamage();
-                    if(msg.action === "heal") dots.forEach(d => d.classList.remove('damaged'));
+                    if(m.message.slide !== undefined) deck.slide(m.message.slide);
+                    if(m.message.action === "damage") renderDamage();
+                    if(m.message.action === "heal") {
+                        damageStage = 0;
+                        dots.forEach(d => d.classList.remove('damaged'));
+                    }
                 }
             });
             pubnub.subscribe({ channels: ['PrasiW.Woche'] });
