@@ -23,9 +23,7 @@
         .btn-video { border-color: #fff; background: #333; color: #fff; }
         .btn-damage { border-color: #ff0055; color: #ff0055; }
         .btn-heal { border-color: #00ff88; color: #00ff88; }
-        
         .full-width { grid-column: span 2; }
-        
         #status { font-size: 0.8rem; color: #666; margin-top: 20px; font-family: monospace; }
     </style>
 </head>
@@ -35,31 +33,25 @@
 
     <div class="button-grid">
         <button class="btn-action" onclick="sendCommand(0, 'morph_go')">⬅️ 1. GO Brett</button>
-        <button class="btn-action" onclick="sendCommand(1, 'morph_qr')">➡️ 2. QR Code</button>
+        
+        <button class="btn-action" onclick="sendCommand(1, 'morph_qr')">✨ 2. Activate QR</button>
         
         <button class="btn-damage" onclick="sendCommand(null, 'damage')">⚡ Damage</button>
         <button class="btn-heal" onclick="sendCommand(null, 'heal')">❤️ Heal</button>
         
         <button class="btn-video full-width" onclick="sendVideoCommand()">🎥 3. START VIDEO (SYNC)</button>
-        
         <button class="btn-video full-width" onclick="sendCommand(3, null)">🤖 4. AR Object</button>
     </div>
 
     <div id="status">Ready</div>
 
     <script>
-        // DEINE KEYS
         const publishKey = 'pub-c-f5b11d3c-ddfe-4dfc-963e-6fae738aeb03'; 
         const subscribeKey = 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7';
         const channelName = 'PrasiW.Woche';
 
-        const pubnub = new PubNub({
-            publishKey: publishKey,
-            subscribeKey: subscribeKey,
-            userId: "presenter_mobile"
-        });
+        const pubnub = new PubNub({ publishKey, subscribeKey, userId: "presenter_mobile" });
 
-        // Standard Befehl senden
         function sendCommand(slideIndex, actionName) {
             const payload = {};
             if (slideIndex !== null) payload.slide = slideIndex;
@@ -67,35 +59,17 @@
             publish(payload);
         }
 
-        // Spezieller Video Befehl mit Zeitstempel
         function sendVideoCommand() {
-            const payload = {
-                slide: 2, // Zur Video Slide wechseln
-                action: 'play_video',
-                timestamp: Date.now() // WICHTIG: Server-Zeit senden
-            };
+            const payload = { slide: 2, action: 'play_video', timestamp: Date.now() };
             publish(payload);
         }
 
         function publish(payload) {
             const statusEl = document.getElementById('status');
             statusEl.innerText = "Sending...";
-            
-            pubnub.publish({
-                channel: channelName,
-                message: payload
-            }, (status) => {
-                if (status.error) {
-                    statusEl.innerText = "ERROR: " + status.category;
-                    statusEl.style.color = "red";
-                } else {
-                    statusEl.innerText = "Sent OK";
-                    statusEl.style.color = "#00ff88";
-                    setTimeout(() => { 
-                        statusEl.innerText = "Ready"; 
-                        statusEl.style.color = "#666";
-                    }, 1000);
-                }
+            pubnub.publish({ channel: channelName, message: payload }, (status) => {
+                if (status.error) { statusEl.innerText = "Error"; statusEl.style.color = "red"; }
+                else { statusEl.innerText = "Sent"; statusEl.style.color = "#00ff88"; setTimeout(() => { statusEl.innerText = "Ready"; statusEl.style.color = "#666"; }, 1000); }
             });
         }
     </script>
