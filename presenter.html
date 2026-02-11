@@ -1,73 +1,77 @@
 <!DOCTYPE html>
 <html lang="de">
 <head>
-<meta charset="UTF-8">
-<title>Torva Presenter</title>
-<script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
-<style>
-body{background:#111;color:#fff;font-family:sans-serif;display:flex;flex-direction:column;align-items:center;padding:20px;}
-.button-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;width:100%;max-width:400px;}
-button{padding:15px;background:#222;border:1px solid #444;color:#fff;cursor:pointer;}
-button.active{border-color:#00ff00;color:#00ff00;}
-#status{margin-top:15px;font-size:.8rem;color:#666;}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Torva Presenter</title>
+    <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background: #111; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
+        h1 { color: #00f2ff; font-size: 1.5rem; margin-bottom: 30px; text-align: center; letter-spacing: 2px; }
+        
+        .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 400px; }
+        
+        button { 
+            background: #222; border: 1px solid #444; color: white; 
+            padding: 20px; border-radius: 10px; font-size: 1rem; 
+            cursor: pointer; transition: all 0.2s; touch-action: manipulation;
+            font-weight: bold;
+        }
+        button:active { transform: scale(0.95); background: #333; }
+        
+        .btn-action { border-color: #00f2ff; color: #00f2ff; }
+        .btn-video { border-color: #fff; background: #333; color: #fff; }
+        .btn-damage { border-color: #ff0055; color: #ff0055; }
+        .btn-heal { border-color: #00ff88; color: #00ff88; }
+        .full-width { grid-column: span 2; }
+        #status { font-size: 0.8rem; color: #666; margin-top: 20px; font-family: monospace; }
+    </style>
 </head>
 <body>
 
-<h2>TORVA CONTROL</h2>
+    <h1>TORVA CONTROL</h1>
 
-<div class="button-grid">
-<button onclick="send('morph_qr')">QR Morph</button>
-<button onclick="send('damage')">Damage</button>
+    <div class="button-grid">
+        <button class="btn-action" onclick="sendCommand(0, 'morph_go')">⬅️ 1. GO Brett</button>
+        
+        <button class="btn-action" onclick="sendCommand(1, 'morph_qr')">✨ 2. Activate QR</button>
+        
+        <button class="btn-damage" onclick="sendCommand(null, 'damage')">⚡ Damage</button>
+        <button class="btn-heal" onclick="sendCommand(null, 'heal')">❤️ Heal</button>
+        
+        <button class="btn-video full-width" onclick="sendVideoCommand()">🎥 3. START VIDEO (SYNC)</button>
+        <button class="btn-video full-width" onclick="sendCommand(3, null)">🤖 4. AR Object</button>
+    </div>
 
-<button onclick="send('heal')">Heal</button>
-<button onclick="toggle('finder',this)">Finder</button>
+    <div id="status">Ready</div>
 
-<button onclick="toggle('timing',this)">Timing</button>
-<button onclick="toggle('format',this)">Format</button>
+    <script>
+        const publishKey = 'pub-c-f5b11d3c-ddfe-4dfc-963e-6fae738aeb03'; 
+        const subscribeKey = 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7';
+        const channelName = 'PrasiW.Woche';
 
-<button onclick="toggle('version',this)">Version</button>
-<button onclick="toggle('data',this)">Data</button>
+        const pubnub = new PubNub({ publishKey, subscribeKey, userId: "presenter_mobile" });
 
-<button onclick="toggle('error',this)">Error</button>
-</div>
+        function sendCommand(slideIndex, actionName) {
+            const payload = {};
+            if (slideIndex !== null) payload.slide = slideIndex;
+            if (actionName !== null) payload.action = actionName;
+            publish(payload);
+        }
 
-<div id="status">Ready</div>
+        function sendVideoCommand() {
+            const payload = { slide: 2, action: 'play_video', timestamp: Date.now() };
+            publish(payload);
+        }
 
-<script>
-const pubnub=new PubNub({
-publishKey:"pub-c-f5b11d3c-ddfe-4dfc-963e-6fae738aeb03",
-subscribeKey:"sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7",
-userId:"presenter"
-});
-
-let activeBtn=null;
-
-function send(action){
-publish({action});
-}
-
-function toggle(feature,btn){
-if(activeBtn===btn){
-btn.classList.remove("active");
-activeBtn=null;
-publish({action:"highlight",feature:null});
-}else{
-if(activeBtn)activeBtn.classList.remove("active");
-btn.classList.add("active");
-activeBtn=btn;
-publish({action:"highlight",feature});
-}
-}
-
-function publish(payload){
-const s=document.getElementById("status");
-s.innerText="Sending...";
-pubnub.publish({channel:"PrasiW.Woche",message:payload},()=>{
-s.innerText="Sent";
-setTimeout(()=>s.innerText="Ready",800);
-});
-}
-</script>
+        function publish(payload) {
+            const statusEl = document.getElementById('status');
+            statusEl.innerText = "Sending...";
+            pubnub.publish({ channel: channelName, message: payload }, (status) => {
+                if (status.error) { statusEl.innerText = "Error"; statusEl.style.color = "red"; }
+                else { statusEl.innerText = "Sent"; statusEl.style.color = "#00ff88"; setTimeout(() => { statusEl.innerText = "Ready"; statusEl.style.color = "#666"; }, 1000); }
+            });
+        }
+    </script>
 </body>
 </html>
