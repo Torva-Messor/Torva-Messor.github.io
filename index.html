@@ -2,9 +2,8 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Viewer - Full Presenter Control</title>
+    <title>Torva Viewer - Locked Mode</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
@@ -17,25 +16,15 @@
             --board-bg: #2b2b2b;
             --matrix-green: #0f0;
         }
+        body { background: var(--bg); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
 
-        body { 
-            background: var(--bg); 
-            overflow: hidden; 
-            font-family: 'Courier New', monospace; 
-            margin: 0;
-            /* Verhindert Markierungen und System-Gesten des Users */
-            user-select: none;
-            touch-action: none;
-        }
-
-        /* Hintergrund-Layer für Go/QR Grid */
         #background-layer {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
             display: flex; justify-content: center; align-items: center;
             z-index: 1; 
             pointer-events: none;
-            transition: opacity 0.6s ease-in-out;
+            transition: opacity 0.4s ease;
         }
 
         .morph-container {
@@ -45,76 +34,55 @@
             gap: 6px;
             width: 55vmin; height: 55vmin;
         }
+        .dot { width: 100%; height: 100%; transition: background 0.3s, transform 0.3s; }
 
-        .dot { width: 100%; height: 100%; transition: all 0.4s ease; }
-
-        /* GO-Modus Styles */
         .mode-go { background: var(--board-bg); gap: 2px; padding: 10px; border-radius: 4px; }
         .mode-go .dot { border-radius: 50%; transform: scale(0.9); }
         .mode-go .dot.white { background: #fff; }
         .mode-go .dot.black { background: #000; }
         .mode-go .dot.hidden { opacity: 0.1; }
 
-        /* QR-Modus Styles */
         .mode-qr { background: transparent; gap: 4px; }
         .mode-qr .dot { border-radius: 2px; }
         .mode-qr .dot.active { background: var(--accent); }
         .mode-qr .dot.inactive { background: rgba(255,255,255,0.05); transform: scale(0.2); }
         
-        /* DATA CORRUPTION Visuals */
+        /* DATA CORRUPTION */
         .mode-qr .dot.damaged { 
             background: var(--damage) !important; 
             box-shadow: 0 0 15px var(--damage); 
-            transform: scale(0.95);
+            transform: scale(0.9) rotate(45deg); 
         }
 
-        /* VIDEO OVERLAY - Komplett gesperrt für User-Interaktion */
         #video-overlay { 
             position: fixed; inset: 0; background: #000; z-index: 50; 
             display: flex; justify-content: center; align-items: center;
-            opacity: 0; transition: opacity 0.8s ease;
-            pointer-events: none; /* User kann nicht klicken/pausieren */
+            opacity: 0; pointer-events: none; transition: opacity 0.5s; 
         }
         #video-overlay.active { opacity: 1; pointer-events: auto; }
+        video { width: 100%; height: 100%; object-fit: contain; }
+
+        .ar-slide { background-color: #1a1a1a !important; }
+        model-viewer { width: 100%; height: 60vh; --poster-color: transparent; }
         
-        video { 
-            width: 100%; height: 100%; object-fit: contain; 
-            pointer-events: none; /* Verhindert Rechtsklick und Play/Pause-Interaktion */
-        }
-
-        #start-overlay { 
-            position: fixed; inset: 0; background: #000; z-index: 10000; 
-            display: flex; justify-content: center; align-items: center; 
-        }
-        #btn-start { 
-            border: 1px solid var(--accent); color: var(--accent); 
-            background: transparent; padding: 20px 50px; border-radius: 50px; 
-            cursor: pointer; font-family: inherit; font-size: 1.2rem;
-        }
-
-        .reveal { z-index: 5; pointer-events: none; } /* Deaktiviert Klicks auf Slides */
-        .matrix-text { 
-            color: var(--matrix-green); font-size: 0.9rem; margin-top: 60vh; 
-            background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid var(--matrix-green); 
-            display: inline-block;
-        }
-
-        /* AR-Button ist die einzige erlaubte Interaktion auf der letzten Slide */
         .ar-trigger-button {
-            pointer-events: auto;
             background: var(--accent); color: black; border: none; padding: 15px 30px;
-            font-weight: bold; border-radius: 50px; cursor: pointer;
+            font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 0 15px var(--accent);
         }
+
+        #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
+        #btn-start { border: 1px solid var(--accent); color: var(--accent); background: transparent; padding: 20px 50px; border-radius: 50px; cursor: pointer; text-transform: uppercase; letter-spacing: 2px; }
+        
+        .reveal { z-index: 5; }
+        .matrix-text { color: var(--matrix-green); font-size: 0.9rem; margin-top: 60vh; background: rgba(0,0,0,0.8); padding: 10px; border: 1px solid var(--matrix-green); display: inline-block; }
     </style>
 </head>
 <body>
 
-    <div id="start-overlay">
-        <button id="btn-start" onclick="initApp()">INITIALIZE VIEWER</button>
-    </div>
+    <div id="start-overlay"><button id="btn-start" onclick="initApp()">Initialize System</button></div>
 
     <div id="video-overlay">
-        <video id="main-video" playsinline webkit-playsinline preload="auto" disablePictureInPicture>
+        <video id="main-video" playsinline webkit-playsinline preload="auto">
             <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
         </video>
     </div>
@@ -126,9 +94,16 @@
     <div class="reveal">
         <div class="slides">
             <section><h2>ORIGIN</h2></section>
-            <section><div class="matrix-text" id="qr-status-text">> SYNC_READY</div></section>
-            <section data-background="#000"></section>
+            
+            <section>
+                <div class="matrix-text" id="qr-status-text">> SYNC_READY</div>
+            </section>
+            
+            <section data-background="#000">
+                </section>
+            
             <section class="ar-slide">
+                <h2 style="color: white;">DISCOVERY</h2>
                 <model-viewer id="astronaut-model" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer quick-look" camera-controls auto-rotate shadow-intensity="1">
                     <button slot="ar-button" class="ar-trigger-button">🚀 AR STARTEN</button>
                 </model-viewer>
@@ -142,16 +117,20 @@
     <script>
         const deck = new Reveal();
         
-        // REVEAL KONFIGURATION: Alle User-Steuerungen deaktiviert
+        // --- KONFIGURATION: SPERREN DER USER-STEUERUNG ---
         deck.initialize({ 
-            controls: false, 
-            progress: false, 
-            keyboard: false, 
-            touch: false, 
-            overview: false, 
-            help: false,
-            mouseWheel: false,
-            transition: 'fade' 
+            controls: false,      // Keine Pfeile auf dem Bildschirm
+            progress: false,      // Kein Fortschrittsbalken
+            center: true, 
+            transition: 'fade',
+            
+            // User-Inputs komplett deaktivieren:
+            keyboard: false,      // Keine Pfeiltasten/Leertaste
+            touch: false,         // Kein Wischen auf Mobile
+            mouseWheel: false,    // Kein Scrollen
+            overview: false,      // Keine Übersicht (ESC-Taste)
+            help: false,          // Keine Hilfe (?)
+            fragments: false      // Keine Fragment-Steuerung
         });
 
         const grid = document.getElementById('grid');
@@ -161,7 +140,6 @@
         const dots = [];
         let damageStage = 0;
 
-        // Grid erzeugen
         for(let i=0; i<225; i++) {
             let d = document.createElement('div');
             d.className = 'dot';
@@ -169,11 +147,11 @@
             dots.push(d);
         }
 
-        // FACHLICHER SCHUTZ: Finder-Patterns dürfen nicht rot werden (Kritisch für QR-Funktion)
-        function isProtected(x, y) {
-            if (x <= 3 && y <= 3) return true;   // Oben Links
-            if (x >= 11 && y <= 3) return true;  // Oben Rechts
-            if (x <= 3 && y >= 11) return true;  // Unten Links
+        // Fachlich korrekter Schutz: Ecken & Randbereiche schützen
+        function isCriticalInfrastructure(x, y) {
+            if (x <= 3 && y <= 3) return true; // Oben Links
+            if (x >= 11 && y <= 3) return true; // Oben Rechts
+            if (x <= 3 && y >= 11) return true; // Unten Links
             return false;
         }
 
@@ -181,6 +159,7 @@
             grid.className = 'morph-container mode-go';
             dots.forEach(d => {
                 d.className = 'dot';
+                d.classList.remove('damaged');
                 let r = Math.random();
                 if(r > 0.8) d.classList.add('black');
                 else if(r > 0.6) d.classList.add('white');
@@ -192,6 +171,7 @@
             grid.className = 'morph-container mode-qr';
             dots.forEach((d, i) => {
                 d.className = 'dot';
+                d.classList.remove('damaged');
                 const x = i % 15; const y = Math.floor(i / 15);
                 const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
                 const isHollow = (x===1||x===2) && (y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
@@ -202,61 +182,67 @@
 
         function renderDamage() {
             damageStage++;
-            const steps = [0.08, 0.18, 0.28, 0.38, 0.50];
-            let targetRatio = steps[Math.min(damageStage - 1, 4)];
+            const steps = [0.05, 0.15, 0.25, 0.35, 0.45, 0.60];
+            let targetRatio = steps[Math.min(damageStage - 1, 5)];
 
             const dataDots = dots.filter((d, i) => {
                 const x = i % 15; const y = Math.floor(i / 15);
-                return d.classList.contains('active') && !isProtected(x, y);
+                return d.classList.contains('active') && !isCriticalInfrastructure(x, y);
             });
 
-            dataDots.sort(() => 0.5 - Math.random()).forEach((d, index) => {
-                if (index < Math.floor(dataDots.length * targetRatio)) d.classList.add('damaged');
+            const shuffled = dataDots.sort(() => 0.5 - Math.random());
+            const limit = Math.floor(dataDots.length * targetRatio);
+
+            shuffled.forEach((d, index) => {
+                if (index < limit) d.classList.add('damaged');
             });
 
-            const integrity = 100 - Math.floor(targetRatio * 100);
-            document.getElementById('qr-status-text').innerHTML = `> ERROR_LEVEL: ${100-integrity}%<br>> FINDER_PATTERNS: SECURED<br>> DATA_RECOVERY: ACTIVE`;
+            let integrity = 100 - Math.floor(targetRatio * 100);
+            let status = integrity < 70 ? "CRITICAL" : "STABLE";
+            document.getElementById('qr-status-text').innerHTML = 
+                `> DATA_INTEGRITY: ${integrity}%<br>> FINDER_PATTERNS: SECURED<br>> STATUS: ${status}`;
         }
 
-        // Automatische Video-Logik beim Slide-Wechsel
         deck.on('slidechanged', event => {
-            const idx = event.indexh;
-            
-            // Video Management
-            if (idx === 2) {
-                backgroundLayer.style.opacity = '0';
-                videoOverlay.classList.add('active');
-                mainVideo.currentTime = 0;
-                mainVideo.play();
-            } else {
+            const index = event.indexh;
+            if (index === 0) {
+                backgroundLayer.style.opacity = '1';
                 videoOverlay.classList.remove('active');
                 mainVideo.pause();
-                backgroundLayer.style.opacity = (idx === 3) ? '0' : '1';
-                if(idx === 0) renderGo();
-                if(idx === 1) renderQR();
+                renderGo();
+            }
+            if (index === 1) {
+                backgroundLayer.style.opacity = '1';
+                videoOverlay.classList.remove('active');
+                mainVideo.pause();
+                renderQR();
+            }
+            if (index === 2) {
+                backgroundLayer.style.opacity = '0'; 
+                videoOverlay.classList.add('active');
+                mainVideo.currentTime = 0;
+                mainVideo.play().catch(e => console.log("Autoplay blocked/handled", e));
+            }
+            if (index === 3) {
+                backgroundLayer.style.opacity = '0';
+                videoOverlay.classList.remove('active');
+                mainVideo.pause();
             }
         });
 
         function initApp() {
             document.getElementById('start-overlay').style.display = 'none';
             renderGo();
-            
-            // Video-Vorladung um Verzögerung zu vermeiden
-            mainVideo.load();
-            mainVideo.play().then(() => mainVideo.pause());
+            mainVideo.play().then(() => { 
+                mainVideo.pause(); 
+                mainVideo.currentTime = 0;
+            }).catch(e => console.log("Unlock Video Error", e));
 
-            const pubnub = new PubNub({ 
-                subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', 
-                userId: "viewer_" + Math.random().toString(16).slice(2) 
-            });
-
+            const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v_" + Date.now() });
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
-                    // Fernsteuerung der Folien
                     if(msg.slide !== undefined) deck.slide(msg.slide);
-                    
-                    // Fernsteuerung der Effekte
                     if(msg.action === "damage") renderDamage();
                     if(msg.action === "heal") {
                         damageStage = 0;
@@ -266,9 +252,9 @@
                     if(msg.action === "play_video") deck.slide(2);
                 }
             });
-
             pubnub.subscribe({ channels: ['PrasiW.Woche'] });
         }
     </script>
 </body>
 </html>
+
