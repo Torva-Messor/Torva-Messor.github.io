@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Viewer AR Edition - Final</title>
+    <title>Torva Viewer - Synchronized Edition</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
@@ -18,13 +18,13 @@
         }
         body { background: var(--bg); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
 
-        /* Raster-Hintergrund */
         #background-layer {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
             display: flex; justify-content: center; align-items: center;
             z-index: 1; 
             pointer-events: none;
+            transition: opacity 0.4s ease;
         }
 
         .morph-container {
@@ -48,27 +48,17 @@
         .mode-qr .dot.inactive { background: rgba(255,255,255,0.05); transform: scale(0.2); }
         .mode-qr .dot.damaged { background: var(--damage) !important; box-shadow: 0 0 10px var(--damage); }
 
-        /* AR Slide Fixes */
-        .ar-slide {
-            background-color: #1a1a1a !important; /* Massives Grau */
-            z-index: 100 !important;
-        }
+        #video-overlay { position: fixed; inset: 0; background: #000; z-index: 5000; display: none; opacity: 0; transition: opacity 0.5s; }
+        #video-overlay.active { display: flex; opacity: 1; }
+        video { width: 100%; height: 100%; object-fit: contain; }
 
-        model-viewer {
-            width: 100%;
-            height: 65vh;
-            --poster-color: transparent;
-        }
+        .ar-slide { background-color: #1a1a1a !important; }
+
+        model-viewer { width: 100%; height: 60vh; --poster-color: transparent; }
         
         .ar-trigger-button {
-            background: var(--accent);
-            color: black;
-            border: none;
-            padding: 15px 30px;
-            font-weight: bold;
-            border-radius: 50px;
-            cursor: pointer;
-            box-shadow: 0 0 15px var(--accent);
+            background: var(--accent); color: black; border: none; padding: 15px 30px;
+            font-weight: bold; border-radius: 50px; cursor: pointer; box-shadow: 0 0 15px var(--accent);
         }
 
         #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; }
@@ -82,6 +72,12 @@
 
     <div id="start-overlay"><button id="btn-start" onclick="initApp()">Initialize System</button></div>
 
+    <div id="video-overlay">
+        <video id="main-video" playsinline webkit-playsinline preload="auto">
+            <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
+        </video>
+    </div>
+
     <div id="background-layer">
         <div id="grid" class="morph-container mode-go"></div>
     </div>
@@ -89,20 +85,11 @@
     <div class="reveal">
         <div class="slides">
             <section><h2>ORIGIN</h2></section>
-            
-            <section>
-                <div class="matrix-text" id="qr-status-text">> SIGNAL_STABLE</div>
-            </section>
-
+            <section><div class="matrix-text" id="qr-status-text">> SYNC_READY</div></section>
             <section data-background="#000"><h2>VIDEO TRANSMISSION</h2></section>
-
             <section class="ar-slide">
-                <h2 style="color: white; margin-top: 20px;">DISCOVERY</h2>
-                <model-viewer 
-                    id="astronaut-model"
-                    src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
-                    ar ar-modes="webxr scene-viewer quick-look" 
-                    camera-controls auto-rotate shadow-intensity="1">
+                <h2 style="color: white;">DISCOVERY</h2>
+                <model-viewer id="astronaut-model" src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar ar-modes="webxr scene-viewer quick-look" camera-controls auto-rotate shadow-intensity="1">
                     <button slot="ar-button" class="ar-trigger-button">🚀 AR STARTEN</button>
                 </model-viewer>
             </section>
@@ -118,6 +105,8 @@
 
         const grid = document.getElementById('grid');
         const backgroundLayer = document.getElementById('background-layer');
+        const mainVideo = document.getElementById('main-video');
+        const videoOverlay = document.getElementById('video-overlay');
         const dots = [];
         let damageStage = 0;
 
@@ -128,7 +117,7 @@
             dots.push(d);
         }
 
-        // Hardcoded Safe-Zones: Finder Patterns dürfen NIEMALS rot werden
+        // PRÄZISER SCHUTZ: Finder Patterns (Ecken) sind tabu, Streifen dazwischen erlaubt
         function isStrictSafe(x, y) {
             if (x < 5 && y < 5) return true;   // Oben Links
             if (x > 9 && y < 5) return true;   // Oben Rechts
@@ -164,13 +153,11 @@
             const steps = [0.07, 0.15, 0.22, 0.28, 0.32, 0.35];
             let targetRatio = steps[Math.min(damageStage - 1, 5)];
 
-            // Nur Dots, die active sind UND NICHT in der Safe-Zone
             const dataDots = dots.filter((d, i) => {
                 const x = i % 15; const y = Math.floor(i / 15);
                 return d.classList.contains('active') && !isStrictSafe(x, y);
             });
 
-            // Mischen und beschädigen
             const shuffled = dataDots.sort(() => 0.5 - Math.random());
             const limit = Math.floor(dataDots.length * targetRatio);
 
@@ -183,9 +170,11 @@
 
         deck.on('slidechanged', event => {
             if (event.indexh === 3) {
-                backgroundLayer.style.visibility = 'hidden'; // Komplett weg
+                backgroundLayer.style.visibility = 'hidden';
+                backgroundLayer.style.opacity = '0';
             } else {
                 backgroundLayer.style.visibility = 'visible';
+                backgroundLayer.style.opacity = '1';
                 if (event.indexh === 0) renderGo();
                 if (event.indexh === 1) renderQR();
             }
@@ -194,14 +183,33 @@
         function initApp() {
             document.getElementById('start-overlay').style.display = 'none';
             renderGo();
+            
+            // WICHTIG FÜR SYNC & APPLE: Video "entsperren"
+            mainVideo.load();
+            mainVideo.play().then(() => { mainVideo.pause(); }).catch(e => console.log("Unlock Video", e));
+
             const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v_" + Date.now() });
             pubnub.addListener({
                 message: (m) => {
-                    if(m.message.slide !== undefined) deck.slide(m.message.slide);
-                    if(m.message.action === "damage") renderDamage();
-                    if(m.message.action === "heal") {
+                    const msg = m.message;
+                    if(msg.slide !== undefined) {
+                        deck.slide(msg.slide);
+                        if(msg.slide !== 2) {
+                            videoOverlay.classList.remove('active');
+                            mainVideo.pause();
+                        }
+                    }
+                    if(msg.action === "damage") renderDamage();
+                    if(msg.action === "heal") {
                         damageStage = 0;
                         dots.forEach(d => d.classList.remove('damaged'));
+                    }
+                    if(msg.action === "play_video") {
+                        videoOverlay.classList.add('active');
+                        // SYNC LOGIC: Berechnet Latenz für exakten Gleichlauf
+                        const latency = (Date.now() - msg.timestamp) / 1000;
+                        mainVideo.currentTime = Math.max(0, latency);
+                        mainVideo.play();
                     }
                 }
             });
