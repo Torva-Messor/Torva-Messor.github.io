@@ -18,6 +18,7 @@
         }
         body { background: var(--bg); overflow: hidden; font-family: 'Inter', sans-serif; }
 
+        /* --- GRID STYLES --- */
         .morph-container {
             display: grid;
             grid-template-columns: repeat(15, 1fr);
@@ -31,13 +32,7 @@
         }
         .dot { width: 100%; height: 100%; transition: all 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
 
-        .mode-go {
-            background: var(--board-bg);
-            box-shadow: 0 20px 60px rgba(0,0,0,0.6);
-            gap: 2px;
-            transform: scale(0.9);
-            border: 1px solid #444;
-        }
+        .mode-go { background: var(--board-bg); box-shadow: 0 20px 60px rgba(0,0,0,0.6); gap: 2px; transform: scale(0.9); border: 1px solid #444; }
         .mode-go .dot { border-radius: 50%; transform: scale(0.95); }
         .mode-go .dot.white { background: radial-gradient(circle at 35% 35%, #ffffff, #d0d0d0); box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
         .mode-go .dot.black { background: radial-gradient(circle at 30% 30%, #999 0%, #111 25%, #000 100%); box-shadow: 0 3px 6px rgba(0,0,0,0.8), inset 0 0 2px rgba(255,255,255,0.3); }
@@ -58,10 +53,22 @@
             100% { opacity: 1; transform: translate(0,0) scale(1); }
         }
 
-        #video-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; }
-        video { width: 100%; height: 100%; object-fit: contain; }
+        /* --- VIDEO FIX --- */
+        /* Wir entfernen den absoluten Container und stylen das Video direkt */
+        .video-wrapper {
+            width: 100%;
+            height: 100vh; /* Volle Höhe */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        video { 
+            max-width: 100%; 
+            max-height: 100%; 
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+        
         model-viewer { width: 100%; height: 80vh; margin-top: 5vh; --poster-color: transparent; }
-
         #ar-button { background-color: var(--accent); border-radius: 4px; border: none; position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); padding: 12px 24px; font-weight: bold; color: #000; box-shadow: 0 0 20px var(--accent); text-transform: uppercase; letter-spacing: 1px; white-space: nowrap; display: none; }
 
         #start-overlay { position: fixed; inset: 0; background: #000; z-index: 10000; display: flex; justify-content: center; align-items: center; transition: opacity 0.5s; }
@@ -75,21 +82,26 @@
 
     <div class="reveal">
         <div class="slides">
+            
             <section data-auto-animate data-background-transition="zoom">
                 <h3 id="morph-title" style="margin-bottom: 40px; opacity: 0.7; font-weight: 300; letter-spacing: 4px;">ORIGIN</h3>
                 <div id="grid" class="morph-container mode-go"></div>
             </section>
+
             <section data-auto-animate data-background-transition="zoom">
                 <h3 style="letter-spacing: 5px; color: #fff;">REED-SOLOMON</h3>
                 <p style="color:var(--accent); font-size: 1rem; font-family: monospace;">Reconstructing Data Stream...</p>
             </section>
+
             <section data-background="#000">
-                <div id="video-container">
-                    <video id="main-video" playsinline webkit-playsinline preload="auto">
+                <div class="video-wrapper">
+                    <video id="main-video" playsinline webkit-playsinline controls preload="auto">
                         <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
+                        Dein Browser unterstützt dieses Video nicht.
                     </video>
                 </div>
             </section>
+
             <section>
                 <h3 style="opacity: 0.5; font-size: 1.5rem;">AR EXPERIENCE</h3>
                 <model-viewer 
@@ -108,6 +120,17 @@
     <script>
         const deck = new Reveal();
         deck.initialize({ controls: false, progress: false, center: true, transition: 'fade', keyboard: false, touch: false, scroll: false, help: false, mouseWheel: false });
+
+        // --- AUTOMATISCHER VIDEO STOP ---
+        // Wenn die Slide gewechselt wird (z.B. zurück zum Start), Video stoppen!
+        deck.on('slidechanged', event => {
+            const v = document.getElementById('main-video');
+            // Wenn wir NICHT auf der Video-Slide (Index 2) sind:
+            if(event.indexh !== 2) {
+                v.pause();
+                v.currentTime = 0;
+            }
+        });
 
         const grid = document.getElementById('grid');
         const dots = [];
@@ -161,8 +184,14 @@
 
         function playVideo() {
             const v = document.getElementById('main-video');
-            v.currentTime = 0; v.muted = false;
-            v.play().catch(e => console.log("Autoplay blocked", e));
+            v.currentTime = 0; 
+            v.muted = false; // Versuch Ton anzuschalten
+            v.play().catch(e => {
+                console.log("Autoplay blocked", e);
+                // Fallback: Muted abspielen, falls Browser Sound blockiert
+                v.muted = true;
+                v.play();
+            });
         }
 
         function initApp() {
@@ -170,7 +199,6 @@
             setTimeout(() => { document.getElementById('start-overlay').style.display = 'none'; }, 500);
             renderGo();
 
-            // VIEWER KONFIGURATION
             const pubnub = new PubNub({ 
                 subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', 
                 userId: "view_client" 
@@ -179,12 +207,20 @@
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
-                    if(msg.slide !== undefined && deck.getIndices().h !== msg.slide) deck.slide(msg.slide);
+                    // SLIDE SYNC (Geht jetzt auch zurück!)
+                    if(msg.slide !== undefined && deck.getIndices().h !== msg.slide) {
+                        deck.slide(msg.slide);
+                    }
+
                     if(msg.action === "morph_go") renderGo();
                     if(msg.action === "morph_qr") renderQR();
                     if(msg.action === "damage") renderDamage();
                     if(msg.action === "heal") renderHeal();
-                    if(msg.action === "play_video") playVideo();
+                    
+                    // Video nur abspielen wenn explizit angefordert
+                    if(msg.action === "play_video") {
+                        playVideo();
+                    }
                 }
             });
             pubnub.subscribe({ channels: ['PrasiW.Woche'] });
