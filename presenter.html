@@ -2,42 +2,44 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>PRESENTER - Wissenschaftswoche</title>
+    <title>PRESENTER</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
     <style>
-        #p-status { position: fixed; top: 0; left: 0; width: 100%; background: #222; color: white; padding: 15px; z-index: 100; text-align: center; font-family: sans-serif; font-weight: bold; }
-        .reveal { margin-top: 60px; }
-        .slide-preview { font-size: 0.5em; color: #555; }
+        body { background: #f4f4f4; }
+        .controls-area { position: fixed; top: 0; width: 100%; background: #222; color: white; padding: 10px; z-index: 100; display: flex; justify-content: space-between; align-items: center; font-family: monospace; }
+        .status-dot { width: 10px; height: 10px; border-radius: 50%; background: red; display: inline-block; }
+        .online { background: #0f0; }
+        .reveal { margin-top: 50px; }
+        /* Vorschau Styling */
+        section { border: 1px solid #ddd; }
     </style>
 </head>
 <body>
 
-    <div id="p-status">STATUS: <span id="st-txt" style="color:orange">Verbinde...</span></div>
+    <div class="controls-area">
+        <div><span id="dot" class="status-dot"></span> STATUS</div>
+        <div id="current-slide-info">Slide 0</div>
+    </div>
 
     <div class="reveal">
         <div class="slides">
-            <section><h1>0. Start</h1></section>
-            <section><h1>1. Definition</h1><p>Binär / Physisch</p></section>
+            <section><h1>1. Intro</h1></section>
+            <section><h1>2. Definition</h1></section>
             <section>
-                <h1>2. Struktur</h1>
-                <p>Position / Ausrichtung (Klick für Animationen!)</p>
-                <div class="fragment">1. Position</div>
-                <div class="fragment">2. Ausrichtung</div>
-                <div class="fragment">3. Timing</div>
+                <h1>3. Struktur (Animiert)</h1>
+                <p class="fragment">Klick 1: Position</p>
+                <p class="fragment">Klick 2: Ausrichtung</p>
+                <p class="fragment">Klick 3: Timing</p>
             </section>
-            <section><h1>3. Fehlerkorrektur</h1><p>Reed-Solomon</p></section>
-            <section><h1>4. Level (30%)</h1><p>High Redundancy</p></section>
-            <section><h1>5. Geschichte</h1><p>1992 / Go Brett</p></section>
-            
-            <section style="background: #e0f7fa;">
-                <h1>6. VIDEO FEATURE</h1>
-                <p style="color:red;">SYNC STARTET AUTOMATISCH</p>
+            <section><h1>4. Fehlerkorrektur</h1></section>
+            <section><h1>5. Geschichte</h1></section>
+            <section style="background: #e3f2fd;">
+                <h1>6. VIDEO SYNC</h1>
+                <p>Sync startet automatisch</p>
             </section>
-            
-            <section style="background: #f3e5f5;">
-                <h1>7. AR FEATURE</h1>
-                <p>WebXR Modell</p>
+            <section style="background: #e8f5e9;">
+                <h1>7. AR MODELL</h1>
             </section>
         </div>
     </div>
@@ -48,8 +50,7 @@
 
     <script>
         const deck = new Reveal();
-        deck.initialize({ controls: true, progress: true, hash: true, fragmentInURL: false });
-        const statusTxt = document.getElementById("st-txt");
+        deck.initialize({ controls: true, progress: true, hash: true });
 
         const pubnub = new PubNub({
             subscribeKey: Pub_Nub_api_Subscribe,
@@ -60,46 +61,44 @@
         pubnub.addListener({
             status: (s) => {
                 if (s.category === "PNConnectedCategory") {
-                    statusTxt.innerText = "LIVE & VERBUNDEN";
-                    statusTxt.style.color = "#00ff00";
+                    document.getElementById("dot").classList.add("online");
                 }
             }
         });
-
         pubnub.subscribe({ channels: [My_Channel_Name] });
 
-        // Funktion zum Senden des Status
-        async function broadcastState() {
+        // Funktion die ALLES sendet (Slide Index UND Fragment Index)
+        async function sendUpdate() {
             const state = deck.getState();
-            const idx = state.indexh;
-            const frag = state.indexf; // Fragment Index (für Animationen auf Slide 2)
+            const indices = deck.getIndices();
             
-            let startT = null;
+            document.getElementById("current-slide-info").innerText = 
+                `Slide ${indices.h} / Step ${indices.f !== undefined ? indices.f : 0}`;
 
-            // Wenn wir auf Slide 6 (Video) sind, generieren wir den Zeitstempel
-            if (idx === 6) {
+            let startTime = null;
+            // Video auf Index 5 (6. Folie)
+            if (indices.h === 5) {
                 try {
                     const t = await pubnub.time();
-                    // 800ms Puffer damit alle Geräte bereit sind
-                    startT = Math.floor(t.timetoken / 10000) + 800; 
-                } catch(e) { startT = Date.now() + 800; }
+                    startTime = Math.floor(t.timetoken / 10000) + 800;
+                } catch(e) { startTime = Date.now() + 800; }
             }
 
             pubnub.publish({
                 channel: My_Channel_Name,
                 message: { 
-                    index: idx, 
-                    fragment: frag, // Sendet auch, welcher Teil der Slide sichtbar ist
-                    startTime: startT 
+                    index: indices.h,
+                    fragment: indices.f !== undefined ? indices.f : -1, // Sende -1 wenn keine Animation aktiv ist
+                    startTime: startTime
                 },
                 storeInHistory: true
             });
         }
 
-        // Event Listener für Slide-Wechsel UND Fragment-Wechsel (Animationen)
-        deck.on('slidechanged', broadcastState);
-        deck.on('fragmentshown', broadcastState);
-        deck.on('fragmenthidden', broadcastState);
+        // Wir feuern bei JEDER Änderung (Folie oder Animationsschritt)
+        deck.on('slidechanged', sendUpdate);
+        deck.on('fragmentshown', sendUpdate);
+        deck.on('fragmenthidden', sendUpdate);
 
     </script>
 </body>
