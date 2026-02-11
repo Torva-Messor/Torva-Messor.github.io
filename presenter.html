@@ -2,106 +2,39 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>MASTER CONTROL</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Presenter Control</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/white.min.css">
     <style>
-        body { background: #111; font-family: monospace; }
-        
-        /* Status Bar oben */
-        .controls { 
-            position: fixed; top: 0; left: 0; right: 0; height: 50px; 
-            background: #000; border-bottom: 1px solid #333; 
-            display: flex; align-items: center; justify-content: space-between; 
-            padding: 0 20px; z-index: 100;
-        }
-        .status-box { display: flex; align-items: center; gap: 10px; }
-        .status-light { width: 12px; height: 12px; border-radius: 50%; background: #555; transition: 0.3s; }
-        .status-light.on { background: #0f0; box-shadow: 0 0 10px #0f0; }
-        #info { color: #0f0; font-size: 0.9rem; letter-spacing: 1px; }
-
-        /* Slide Design für den Presenter */
-        .slide-card { 
-            border: 1px solid #444; 
-            padding: 40px; 
-            background: #222; 
-            border-radius: 8px;
-            text-align: left; 
-        }
-        h3 { color: #00f2ff; margin-bottom: 20px; text-transform: uppercase; font-size: 1.4rem;}
-        .instruction { 
-            font-size: 1rem; color: #ccc; line-height: 1.6;
-            border-left: 3px solid #00f2ff; padding-left: 15px; margin-top: 20px;
-        }
-        b { color: white; }
-        
-        /* Visualisierung der Fragmente im Presenter */
-        .step-marker { color: #555; margin: 5px 0; }
-        .visible { color: #fff; font-weight: bold; }
-        .visible::before { content: "➜ "; color: #0f0; }
+        .status-box { padding: 20px; background: #eee; border: 2px solid #333; margin-top: 20px; }
+        .current-action { font-weight: bold; color: blue; font-size: 1.5em; }
     </style>
 </head>
 <body>
-
-    <div class="controls">
-        <div class="status-box">
-            <div id="status" class="status-light"></div>
-            <div style="color:white; font-size:0.8rem">PUBNUB LINK</div>
-        </div>
-        <div id="info">INITIALIZING...</div>
-    </div>
-
     <div class="reveal">
         <div class="slides">
-
+            
             <section>
-                <div class="slide-card">
-                    <h3>1. THE ORIGIN (1992)</h3>
-                    <div class="instruction">
-                        <b>Zustand:</b> Das Go Brett.<br>
-                        Erkläre den Ursprung des QR Codes.
-                    </div>
-                </div>
+                <h3>1. BOARD / QR</h3>
+                <p>Initial: GO BOARD</p>
+                <p class="fragment" data-action="qr">Klick -> MORPH TO QR</p>
+                <div class="status-box">Status: <span id="log">Waiting...</span></div>
             </section>
 
             <section>
-                <div class="slide-card">
-                    <h3>2. MORPHING</h3>
-                    <div class="instruction">
-                        <b>Aktion:</b> Das Brett verwandelt sich in den QR Code.
-                    </div>
-                </div>
+                <h3>2. INFO SLIDE</h3>
+                <p>Zeige Text.</p>
+                <p class="fragment" data-action="info">Klick -> Highlight</p>
             </section>
 
             <section>
-                <div class="slide-card">
-                    <h3>3. FEHLERKORREKTUR</h3>
-                    <div class="instruction">
-                        <div class="step-marker fragment" data-fragment-index="0">1. Klick: <b>DAMAGE</b> (Rot / Zerstörung)</div>
-                        <div class="step-marker fragment" data-fragment-index="1">2. Klick: <b>HEAL</b> (Grün / Wiederherstellung)</div>
-                    </div>
-                </div>
+                <h3>3. VIDEO TRIGGER</h3>
+                <p>Wenn diese Slide aktiv ist, startet das Video beim Viewer sofort.</p>
             </section>
 
-            <section>
-                <div class="slide-card">
-                    <h3>4. DECODING (VIDEO)</h3>
-                    <div class="instruction">
-                        <b>Automatisch:</b> Das Video startet sofort auf dem Viewer.<br>
-                        Dateiname: <i>qr-code-pubnub-torva-project.mp4</i>
-                    </div>
-                </div>
-            </section>
-
-            <section>
-                <div class="slide-card">
-                    <h3>5. AUGMENTED REALITY</h3>
-                    <div class="instruction">
-                        <b>Finale:</b> Der 3D Astronaut erscheint.<br>
-                        (Zuschauer können ihr Handy nutzen, wenn als AR konfiguriert).
-                    </div>
-                </div>
+             <section>
+                <h3>4. AR MODELL</h3>
+                <p>Model Viewer aktiv.</p>
             </section>
 
         </div>
@@ -112,88 +45,49 @@
     <script src="config.js"></script>
 
     <script>
-        // Reveal initialisieren
         const deck = new Reveal();
-        deck.initialize({ 
-            controls: true, 
-            progress: true, 
-            hash: false,
-            transition: 'slide'
-        });
+        deck.initialize({ controls: true, progress: true, hash: true });
 
-        // PubNub Setup
         const pubnub = new PubNub({
-            subscribeKey: Pub_Nub_api_Subscribe,
             publishKey: Pub_Nub_api_Publish,
-            userId: "presenter_tablet"
+            subscribeKey: Pub_Nub_api_Subscribe,
+            userId: "presenter"
         });
 
-        // Verbindungsstatus prüfen
-        pubnub.addListener({
-            status: (s) => {
-                if (s.category === "PNConnectedCategory") {
-                    document.getElementById("status").classList.add("on");
-                    document.getElementById("info").innerText = "CONNECTED & READY";
+        function sync() {
+            const idx = deck.getIndices(); // Holt { h: 0, v: 0, f: undefined/0/1 }
+            let action = "go"; // Standard State
+            
+            // Logik-Mapping: Welche Slide/Fragment bedeutet was?
+            if (idx.h === 0) {
+                // Wenn Fragment 0 sichtbar ist -> QR, sonst GO
+                action = (idx.f >= 0) ? "qr" : "go";
+            } 
+            else if (idx.h === 2) {
+                action = "video";
+            }
+
+            document.getElementById('log').innerText = `Slide: ${idx.h} | Action: ${action}`;
+
+            // Sende ALLES an den Viewer
+            pubnub.publish({
+                channel: My_Channel_Name,
+                message: {
+                    indexh: idx.h,
+                    indexv: idx.v,
+                    action: action
                 }
-            }
-        });
-        pubnub.subscribe({ channels: [My_Channel_Name] });
-
-        // Hauptfunktion zum Senden der Befehle
-        function sendCommand() {
-            const idx = deck.getIndices();
-            const slide = idx.h; // Slide Index (0, 1, 2...)
-            const frag = idx.f !== undefined ? idx.f : -1; // Fragment Index (-1, 0, 1...)
-            
-            document.getElementById("info").innerText = `SENDING: SLIDE ${slide} | FRAG ${frag}`;
-
-            let msg = { slide: slide, action: "none" };
-
-            // --- LOGIK MAPPING ---
-            
-            // Slide 0: Start (Go Brett)
-            if (slide === 0) {
-                msg.action = "morph_go";
-            }
-
-            // Slide 1: Morphing zu QR
-            if (slide === 1) {
-                msg.action = "morph_qr";
-            }
-
-            // Slide 2: Fehlerkorrektur (Fragmente)
-            if (slide === 2) {
-                if (frag === -1) msg.action = "morph_qr"; // Sicherstellen, dass QR da ist
-                if (frag === 0) msg.action = "damage";    // 1. Klick
-                if (frag === 1) msg.action = "heal";      // 2. Klick
-            }
-
-            // Slide 3: Video abspielen
-            if (slide === 3) {
-                msg.action = "play_video";
-            }
-
-            // Slide 4: AR / Ende
-            if (slide === 4) {
-                msg.action = "none"; // Viewer zeigt einfach Slide 4 (Model Viewer)
-            }
-
-            console.log("Publishing:", msg);
-            pubnub.publish({ channel: My_Channel_Name, message: msg });
+            });
         }
 
-        // Event Listener: Sende Befehl bei jedem Wechsel
-        deck.on('slidechanged', sendCommand);
-        deck.on('fragmentshown', sendCommand);
-        deck.on('fragmenthidden', sendCommand);
-
-        // Styling Logik für den Presenter (Schritt-Markierung fett machen)
-        deck.on('fragmentshown', (event) => {
-            event.fragment.classList.add('visible');
-        });
-        deck.on('fragmenthidden', (event) => {
-            event.fragment.classList.remove('visible');
-        });
+        // BINDING: Das ist der Schlüssel zum Erfolg!
+        // Wir hören auf ALLE Events, auch Rückwärts.
+        deck.on('slidechanged', sync);
+        deck.on('fragmentshown', sync);
+        deck.on('fragmenthidden', sync); // Das fehlte vorher für den "Back" Button
+        
+        // Initialer Sync
+        setTimeout(sync, 1000);
 
     </script>
 </body>
