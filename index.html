@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Viewer - QR All Blue (Final)</title>
+    <title>Torva Viewer - Go White / QR Blue</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
@@ -15,7 +15,7 @@
             --matrix-green: #00ff41; 
             --damage-red: #ff0000; 
             --bg-deep: #050505; 
-            --qr-dark: #000000; /* ÄNDERUNG: Reines Schwarz statt #111 */
+            --qr-dark: #000000; 
         }
         body { background: var(--bg-deep); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
         
@@ -32,10 +32,10 @@
             background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px);
             pointer-events: none; z-index: 900;
             opacity: 1;
-            transition: opacity 0.5s ease; /* Weicher Übergang für den Filter */
+            transition: opacity 0.5s ease;
         }
 
-        /* ÄNDERUNG: Wenn Video läuft, Scanlines ausblenden */
+        /* Filter ausblenden bei Video */
         body.video-active::after {
             opacity: 0;
         }
@@ -55,18 +55,18 @@
             transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
             position: relative; border-radius: 2px; 
             opacity: 0.1; 
-            background: #111; /* Default background darker */
+            background: #111; 
             will-change: transform, opacity, background-color;
         }
 
-        /* --- MODE: GO --- */
-        .mode-go .cell { border-radius: 50%; opacity: 0.8; transform: scale(0.6); }
-        .mode-go .cell.black { background: #000; }
+        /* --- MODE: GO (Klassisch Schwarz/Weiß) --- */
+        .mode-go .cell { border-radius: 50%; opacity: 0.9; transform: scale(0.6); }
+        .mode-go .cell.black { background: #111; box-shadow: inset 0 0 10px #000; }
         
-        /* ÄNDERUNG: White zu Blue geändert, damit kein Weiß mehr zu sehen ist */
+        /* HIER ÄNDERUNG: Go Steine sind wieder WEISS */
         .mode-go .cell.white { 
-            background: var(--neon-blue); 
-            box-shadow: 0 0 15px rgba(0, 242, 255, 0.4); 
+            background: #e0e0e0; 
+            box-shadow: 0 0 15px rgba(255,255,255,0.3); 
             animation: floaty 3s infinite ease-in-out alternate; 
         }
         
@@ -77,7 +77,7 @@
             100% { transform: scale(0.6) translateY(-5px); }
         }
 
-        /* --- MODE: QR CODE --- */
+        /* --- MODE: QR CODE (Nur Blau/Schwarz) --- */
         .mode-qr .cell { transform: scale(1); border-radius: 1px; opacity: 1; }
         
         .mode-qr .cell.finder-outer { background: var(--neon-blue); box-shadow: 0 0 15px rgba(0, 242, 255, 0.5); z-index: 2; }
@@ -216,7 +216,7 @@
                 cells.forEach(c => {
                     let r = Math.random();
                     if(r > 0.8) c.classList.add('black');
-                    else if(r > 0.6) c.classList.add('white'); // Heißt noch 'white', ist jetzt aber per CSS Blau
+                    else if(r > 0.6) c.classList.add('white'); 
                     else c.classList.add('empty');
                 });
             });
@@ -314,7 +314,7 @@
                         const container = document.getElementById('video-container');
                         if(msg.videoState === 'play') {
                             container.classList.add('active');
-                            document.body.classList.add('video-active'); // Filter entfernen
+                            document.body.classList.add('video-active');
                             
                             let targetTime = ((Date.now() - msg.startTime) / 1000) + 0.1; 
                             if (targetTime < 0) targetTime = 0;
@@ -323,7 +323,7 @@
                             if(videoPlayer.paused) videoPlayer.play().catch(e => { videoPlayer.muted = true; videoPlayer.play(); });
                         } else {
                             container.classList.remove('active');
-                            document.body.classList.remove('video-active'); // Filter wieder an
+                            document.body.classList.remove('video-active');
                             videoPlayer.pause();
                         }
                     }
