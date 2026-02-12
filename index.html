@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Viewer - Sync Fix</title>
+    <title>Torva Viewer - QR & Sync Fix</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
@@ -15,6 +15,8 @@
             --matrix-green: #00ff41; 
             --damage-red: #ff0055; 
             --bg-deep: #050505; 
+            --qr-dark: #111;
+            --qr-light: #eee;
         }
         body { background: var(--bg-deep); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
         
@@ -24,46 +26,71 @@
             z-index: 1; perspective: 1200px; 
         }
 
+        /* Grid auf 21x21 angepasst (Standard QR Code Version 1) */
         .morph-grid {
             display: grid;
-            grid-template-columns: repeat(15, 1fr);
-            grid-template-rows: repeat(15, 1fr);
-            gap: 4px; width: 75vmin; height: 75vmin;
+            grid-template-columns: repeat(21, 1fr);
+            grid-template-rows: repeat(21, 1fr);
+            gap: 2px; /* Etwas weniger Lücke für besseren QR-Look */
+            width: 80vmin; height: 80vmin;
             transition: transform 1s cubic-bezier(0.2, 0.8, 0.2, 1);
             transform-style: preserve-3d;
         }
 
         .cell { 
             width: 100%; height: 100%; 
-            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); 
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1); 
             position: relative; border-radius: 2px; 
             opacity: 0.1; 
             background: #333;
         }
 
-        /* Modes */
+        /* --- MODE: GO (Random Dots) --- */
         .mode-go .cell { border-radius: 50%; opacity: 1; transform: scale(0.85); }
         .mode-go .cell.black { background: #111; box-shadow: inset 2px 2px 5px rgba(255,255,255,0.1); }
         .mode-go .cell.white { background: #eee; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
         .mode-go .cell.empty { opacity: 0.05; background: #fff; }
 
-        .mode-qr .cell { transform: scale(0.95); border-radius: 0; }
-        .cell.is-finder { background: var(--neon-blue); }
-        .highlight-finders .cell.is-finder { opacity: 1; box-shadow: 0 0 20px var(--neon-blue); z-index: 10; }
-        .cell.is-sync { background: var(--matrix-green); border-radius: 50%; }
-        .highlight-sync .cell.is-sync { opacity: 1; box-shadow: 0 0 15px var(--matrix-green); transform: scale(0.6); }
-        .cell.is-version { background: var(--neon-purple); }
-        .highlight-version .cell.is-version { opacity: 1; box-shadow: 0 0 15px var(--neon-purple); transform: scale(0.8) rotate(45deg); }
+        /* --- MODE: QR CODE (Sharp Edges) --- */
+        .mode-qr .cell { transform: scale(1); border-radius: 0; opacity: 1; }
         
-        .cell.is-data { background: #eee; opacity: 0.8; }
-        .cell.bit-1 { background: var(--neon-blue) !important; box-shadow: 0 0 5px var(--neon-blue) !important; opacity: 1 !important; }
+        /* Finder Patterns (Echte 7x7 Struktur) */
+        .mode-qr .cell.finder-outer { background: var(--neon-blue); box-shadow: 0 0 8px rgba(0, 242, 255, 0.5); }
+        .mode-qr .cell.finder-inner { background: var(--qr-dark); } /* Leerzeichen im Finder */
+        .mode-qr .cell.finder-center { background: var(--neon-blue); box-shadow: 0 0 10px rgba(0, 242, 255, 0.8); }
+        
+        /* Timing Patterns (Linien zwischen den Findern) */
+        .mode-qr .cell.is-sync.bit-1 { background: var(--matrix-green); }
+        .mode-qr .cell.is-sync.bit-0 { background: var(--qr-dark); }
+        
+        /* Version Information */
+        .mode-qr .cell.is-version { background: var(--neon-purple); }
+        
+        /* Data Payload */
+        .mode-qr .cell.is-data.bit-1 { background: var(--qr-light); }
+        .mode-qr .cell.is-data.bit-0 { background: var(--qr-dark); }
 
-        .highlight-full .cell { opacity: 1; }
-        .highlight-full .cell.is-sync:not(.bit-1) { background: #eee; transform: scale(0.95); border-radius: 0; }
-        .highlight-full .cell.is-version:not(.bit-1) { background: #eee; transform: scale(0.95); rotate: 0deg; }
+        /* --- HIGHLIGHT MODES --- */
+        .highlight-finders .cell:not(.finder-outer):not(.finder-inner):not(.finder-center) { opacity: 0.05; transform: scale(0.5); }
+        .highlight-finders .cell.finder-outer, .highlight-finders .cell.finder-center { transform: scale(1.1); z-index: 10; }
 
-        .cell.dimmed { opacity: 0.05 !important; transform: scale(0.5) !important; box-shadow: none !important; }
-        .cell.damaged { background: var(--damage-red) !important; box-shadow: 0 0 15px var(--damage-red) !important; opacity: 1 !important; z-index: 20; }
+        .highlight-sync .cell:not(.is-sync) { opacity: 0.05; transform: scale(0.5); }
+        .highlight-sync .cell.is-sync { opacity: 1; box-shadow: 0 0 15px var(--matrix-green); transform: scale(1.2); z-index: 10; border-radius: 50%; }
+
+        .highlight-version .cell:not(.is-version) { opacity: 0.05; transform: scale(0.5); }
+        .highlight-version .cell.is-version { opacity: 1; box-shadow: 0 0 15px var(--neon-purple); transform: scale(0.8) rotate(45deg); z-index: 10; }
+
+        /* Damage/Heal */
+        .cell.damaged { background: var(--damage-red) !important; box-shadow: 0 0 15px var(--damage-red) !important; opacity: 1 !important; z-index: 20; animation: glitch 0.2s infinite; }
+        
+        @keyframes glitch {
+            0% { transform: translate(0) }
+            20% { transform: translate(-2px, 2px) }
+            40% { transform: translate(-2px, -2px) }
+            60% { transform: translate(2px, 2px) }
+            80% { transform: translate(2px, -2px) }
+            100% { transform: translate(0) }
+        }
 
         /* Video Container */
         #video-container { 
@@ -72,8 +99,6 @@
             transition: opacity 0.5s; display: flex; justify-content: center; align-items: center; 
         }
         #video-container.active { opacity: 1; pointer-events: all; }
-        
-        /* Video Element - Wichtig für iOS Sync */
         video { width: 100%; height: 100%; object-fit: cover; }
         
         #ar-viewer-container { width: 100%; height: 80vh; background: #222; border-radius: 20px; overflow: hidden; position: relative; }
@@ -88,15 +113,14 @@
             box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
         }
         
-        /* Debug Info für Sync */
         #sync-debug {
-            position: fixed; bottom: 10px; right: 10px; color: #0f0; font-size: 10px; font-family: monospace; z-index: 200; pointer-events: none;
+            position: fixed; bottom: 10px; right: 10px; color: #0f0; font-size: 12px; font-family: monospace; z-index: 200; pointer-events: none; background: rgba(0,0,0,0.7); padding: 5px;
         }
     </style>
 </head>
 <body>
-    <button id="btn-start" onclick="initSystem()">INITIALIZE SYSTEM & AUDIO</button>
-    <div id="sync-debug"></div>
+    <button id="btn-start" onclick="initSystem()">INITIALIZE SYSTEM</button>
+    <div id="sync-debug">System Offline</div>
     
     <div id="video-container">
         <video id="main-video" playsinline webkit-playsinline preload="auto">
@@ -124,7 +148,7 @@
         
         const grid = document.getElementById('grid');
         const cells = [];
-        const gridSize = 15;
+        const gridSize = 21; // Standard QR Code V1 Größe!
         const debugEl = document.getElementById('sync-debug');
 
         // Init Grid
@@ -136,7 +160,7 @@
         }
 
         function clearClasses() {
-            grid.classList.remove('mode-go', 'mode-qr', 'highlight-finders', 'highlight-sync', 'highlight-version', 'highlight-full');
+            grid.classList.remove('mode-go', 'mode-qr', 'highlight-finders', 'highlight-sync', 'highlight-version');
             cells.forEach(c => c.className = 'cell');
         }
 
@@ -151,67 +175,75 @@
             });
         }
 
+        // --- Echte QR Code Logik ---
         function identifyCellType(x, y) {
-            if ((x < 4 && y < 4) || (x > 10 && y < 4) || (x < 4 && y > 10)) return 'is-finder';
-            if ((y === 2 && x >= 4 && x <= 10) || (x === 2 && y >= 4 && y <= 10)) return 'is-sync';
-            if ((y === 4 && x < 4) || (x === 4 && y < 4)) return 'is-version';
-            if (y === 4 && x > 10) return 'is-version';
-            if (x === 4 && y > 10) return 'is-version';
+            // Suchmuster (Finder Patterns) - 7x7 Blöcke in den Ecken
+            const isTopLeft = x <= 6 && y <= 6;
+            const isTopRight = x >= 14 && y <= 6;
+            const isBottomLeft = x <= 6 && y >= 14;
+
+            if (isTopLeft || isTopRight || isBottomLeft) {
+                // Lokale Koordinaten innerhalb des 7x7 Blocks berechnen
+                let localX = isTopRight ? x - 14 : x;
+                let localY = isBottomLeft ? y - 14 : y;
+
+                if (localX === 0 || localX === 6 || localY === 0 || localY === 6) return 'finder-outer';
+                if (localX === 1 || localX === 5 || localY === 1 || localY === 5) return 'finder-inner';
+                return 'finder-center'; // 3x3 Kern
+            }
+
+            // Taktmuster (Timing Patterns) - Zeile/Spalte 6
+            if ((x === 6 && y >= 7 && y <= 13) || (y === 6 && x >= 7 && x <= 13)) return 'is-sync';
+
+            // Formatinformationen (rund um die Finder)
+            if ((x <= 8 && y === 8) || (x === 8 && y <= 8) || (x >= 13 && y === 8) || (x === 8 && y >= 13)) return 'is-version';
+
             return 'is-data';
         }
 
-        function renderQRStructure(highlightMode) {
-            grid.classList.remove('highlight-finders', 'highlight-sync', 'highlight-version', 'highlight-full');
+        function renderQRStructure(highlightMode = null) {
+            grid.classList.remove('highlight-finders', 'highlight-sync', 'highlight-version');
+            
             if(!grid.classList.contains('mode-qr')) {
                 clearClasses();
                 grid.classList.add('mode-qr');
+                
                 cells.forEach((c, i) => {
                     const x = i % gridSize; 
                     const y = Math.floor(i / gridSize);
                     const type = identifyCellType(x, y);
                     c.classList.add(type);
-                    if ((type === 'is-data' || type === 'is-version' || type === 'is-sync') && Math.random() > 0.5) c.classList.add('bit-1');
+
+                    // Generiere zufällige Daten-Bits (und Timing-Linien)
+                    if (type === 'is-data' || type === 'is-version') {
+                        c.classList.add(Math.random() > 0.5 ? 'bit-1' : 'bit-0');
+                    } else if (type === 'is-sync') {
+                        // Timing-Linien alternieren immer schwarz/weiß
+                        let isEven = (x === 6 ? y : x) % 2 === 0;
+                        c.classList.add(isEven ? 'bit-1' : 'bit-0');
+                    }
                 });
             }
+
+            // Highlights anwenden
             if(highlightMode) grid.classList.add(highlightMode);
-            cells.forEach(c => {
-                c.classList.remove('dimmed');
-                if (highlightMode !== 'highlight-full' && highlightMode) {
-                    if (!c.classList.contains(highlightMode.replace('highlight-', 'is-'))) c.classList.add('dimmed');
-                }
-            });
         }
 
         function initSystem() {
             document.getElementById('btn-start').style.display = 'none';
             const videoPlayer = document.getElementById('main-video');
             
-            // --- AGGRESSIVER AUDIO UNLOCK ---
-            // Wir erzwingen Audio sofort beim Klick.
-            videoPlayer.volume = 1.0;
-            videoPlayer.muted = false; // Wichtig: Nicht muted!
-            
-            // Ein leeres Promise, um zu prüfen, ob es klappt
-            let startPromise = videoPlayer.play();
-            
-            if (startPromise !== undefined) {
-                startPromise.then(() => {
-                    // Audio erfolgreich gestartet -> Sofort pausieren und zurücksetzen
-                    videoPlayer.pause();
-                    videoPlayer.currentTime = 0;
-                    debugEl.innerText = "Audio: Unlocked";
-                }).catch(error => {
-                    // Fallback, wenn Browser streng ist (z.B. Batteriesparmodus)
-                    console.warn("Audio Autoplay blocked, switching to muted unlock", error);
-                    videoPlayer.muted = true;
-                    videoPlayer.play().then(() => {
-                        videoPlayer.pause();
-                        videoPlayer.currentTime = 0;
-                        videoPlayer.muted = false; // Versuch, es später wieder anzuschalten
-                    });
-                    debugEl.innerText = "Audio: Blocked (Muted Fallback)";
-                });
-            }
+            // Sauberer Audio-Unlock für iOS & Android (direkt an User-Klick gebunden)
+            videoPlayer.muted = false;
+            videoPlayer.play().then(() => {
+                videoPlayer.pause();
+                videoPlayer.currentTime = 0;
+                debugEl.innerText = "Audio Unlocked";
+            }).catch(e => {
+                console.warn("Autoplay strict mode", e);
+                videoPlayer.muted = true; // Fallback für extrem restriktive Browser
+                debugEl.innerText = "Audio Muted Fallback";
+            });
 
             const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v15-viewer-" + Math.floor(Math.random()*1000) });
             
@@ -219,52 +251,47 @@
                 message: (m) => {
                     const msg = m.message;
                     if(msg.slide !== undefined) deck.slide(msg.slide);
+                    
                     if(msg.action === 'morph_go') renderGo();
+                    if(msg.action === 'morph_qr') renderQRStructure(); 
                     if(msg.action === 'highlight_finders') renderQRStructure('highlight-finders');
                     if(msg.action === 'highlight_sync') renderQRStructure('highlight-sync');
                     if(msg.action === 'highlight_version') renderQRStructure('highlight-version');
-                    if(msg.action === 'morph_qr') renderQRStructure('highlight-full'); 
                     
                     if(msg.action === 'damage') {
-                        let dataCells = cells.filter(c => c.classList.contains('bit-1'));
-                        for(let i=0; i<20; i++) if(dataCells.length > 0) dataCells[Math.floor(Math.random()*dataCells.length)].classList.add('damaged');
+                        let dataCells = cells.filter(c => c.classList.contains('is-data') && c.classList.contains('bit-1'));
+                        for(let i=0; i<15; i++) if(dataCells.length > 0) dataCells[Math.floor(Math.random()*dataCells.length)].classList.add('damaged');
                     }
                     if(msg.action === 'heal') {
                         cells.forEach(c => c.classList.remove('damaged'));
-                        renderQRStructure('highlight-full');
+                        renderQRStructure();
                     }
                     
-                    // --- HARD SYNC LOGIC ---
+                    // --- VERBESSERTER VIDEO SYNC ---
                     if(msg.action === 'video_sync') {
                         const container = document.getElementById('video-container');
                         
                         if(msg.videoState === 'play') {
                             container.classList.add('active');
                             
-                            // 1. Zielzeit berechnen
-                            let targetTime = (Date.now() - msg.startTime) / 1000;
+                            // Erwarte, dass das Signal ca. 100ms Latenz hat
+                            let targetTime = ((Date.now() - msg.startTime) / 1000) + 0.1; 
                             if (targetTime < 0) targetTime = 0;
 
-                            // 2. Hard Sync: Wenn Differenz > 0.3s, erzwinge Sprung
                             let drift = Math.abs(videoPlayer.currentTime - targetTime);
-                            debugEl.innerText = `Drift: ${drift.toFixed(3)}s`;
+                            debugEl.innerText = `Sync Drift: ${drift.toFixed(2)}s`;
 
-                            // Wenn Video noch am Anfang ist oder Drift zu groß -> Springen
-                            if (drift > 0.3 || videoPlayer.currentTime < 0.1) {
+                            // WICHTIG: Nur hart springen, wenn das Video extrem asynchron ist (> 0.6s) 
+                            // oder wenn es gerade erst startet. Ständiges Springen = Stottern.
+                            if (drift > 0.6 || videoPlayer.paused) {
                                 videoPlayer.currentTime = targetTime;
+                                debugEl.innerText += " (HARD SYNC)";
                             }
 
-                            // 3. Sicherstellen, dass Sound an ist
-                            videoPlayer.muted = false;
-
-                            // 4. Abspielen
-                            let p = videoPlayer.play();
-                            if (p !== undefined) {
-                                p.catch(e => {
-                                    // Letzter Ausweg: Ohne Ton abspielen, damit es wenigstens läuft
+                            if(videoPlayer.paused) {
+                                videoPlayer.play().catch(e => {
                                     videoPlayer.muted = true;
                                     videoPlayer.play();
-                                    debugEl.innerText = "Force Muted Play";
                                 });
                             }
                         } else {
