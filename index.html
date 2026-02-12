@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Viewer - Structure Analysis</title>
+    <title>Torva Viewer - Sync Fix</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
@@ -41,13 +41,12 @@
             background: #333;
         }
 
-        /* --- GO MODE --- */
+        /* Modes */
         .mode-go .cell { border-radius: 50%; opacity: 1; transform: scale(0.85); }
         .mode-go .cell.black { background: #111; box-shadow: inset 2px 2px 5px rgba(255,255,255,0.1); }
         .mode-go .cell.white { background: #eee; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
         .mode-go .cell.empty { opacity: 0.05; background: #fff; }
 
-        /* --- QR STRUCTURE HIGHLIGHTS --- */
         .mode-qr .cell { transform: scale(0.95); border-radius: 0; }
         .cell.is-finder { background: var(--neon-blue); }
         .highlight-finders .cell.is-finder { opacity: 1; box-shadow: 0 0 20px var(--neon-blue); z-index: 10; }
@@ -66,7 +65,7 @@
         .cell.dimmed { opacity: 0.05 !important; transform: scale(0.5) !important; box-shadow: none !important; }
         .cell.damaged { background: var(--damage-red) !important; box-shadow: 0 0 15px var(--damage-red) !important; opacity: 1 !important; z-index: 20; }
 
-        /* Video & AR */
+        /* Video Container */
         #video-container { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; 
             background: black; opacity: 0; pointer-events: none; 
@@ -74,7 +73,7 @@
         }
         #video-container.active { opacity: 1; pointer-events: all; }
         
-        /* WICHTIG: muted attribute hilft bei Autoplay Problemen */
+        /* Video Element - Wichtig für iOS Sync */
         video { width: 100%; height: 100%; object-fit: cover; }
         
         #ar-viewer-container { width: 100%; height: 80vh; background: #222; border-radius: 20px; overflow: hidden; position: relative; }
@@ -88,13 +87,19 @@
             text-transform: uppercase; letter-spacing: 3px; 
             box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
         }
+        
+        /* Debug Info für Sync */
+        #sync-debug {
+            position: fixed; bottom: 10px; right: 10px; color: #0f0; font-size: 10px; font-family: monospace; z-index: 200; pointer-events: none;
+        }
     </style>
 </head>
 <body>
-    <button id="btn-start" onclick="initSystem()">Initialize System</button>
+    <button id="btn-start" onclick="initSystem()">INITIALIZE SYSTEM & AUDIO</button>
+    <div id="sync-debug"></div>
     
     <div id="video-container">
-        <video id="main-video" playsinline preload="auto">
+        <video id="main-video" playsinline webkit-playsinline preload="auto">
             <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
         </video>
     </div>
@@ -120,6 +125,7 @@
         const grid = document.getElementById('grid');
         const cells = [];
         const gridSize = 15;
+        const debugEl = document.getElementById('sync-debug');
 
         // Init Grid
         for(let i=0; i<gridSize*gridSize; i++) {
@@ -131,9 +137,7 @@
 
         function clearClasses() {
             grid.classList.remove('mode-go', 'mode-qr', 'highlight-finders', 'highlight-sync', 'highlight-version', 'highlight-full');
-            cells.forEach(c => {
-                c.className = 'cell'; 
-            });
+            cells.forEach(c => c.className = 'cell');
         }
 
         function renderGo() {
@@ -158,7 +162,6 @@
 
         function renderQRStructure(highlightMode) {
             grid.classList.remove('highlight-finders', 'highlight-sync', 'highlight-version', 'highlight-full');
-            
             if(!grid.classList.contains('mode-qr')) {
                 clearClasses();
                 grid.classList.add('mode-qr');
@@ -167,20 +170,14 @@
                     const y = Math.floor(i / gridSize);
                     const type = identifyCellType(x, y);
                     c.classList.add(type);
-                    if (type === 'is-data' || type === 'is-version' || type === 'is-sync') {
-                        if (Math.random() > 0.5) c.classList.add('bit-1');
-                    }
+                    if ((type === 'is-data' || type === 'is-version' || type === 'is-sync') && Math.random() > 0.5) c.classList.add('bit-1');
                 });
             }
-
             if(highlightMode) grid.classList.add(highlightMode);
-
             cells.forEach(c => {
                 c.classList.remove('dimmed');
-                if (highlightMode !== 'highlight-full') {
-                    if (highlightMode === 'highlight-finders' && !c.classList.contains('is-finder')) c.classList.add('dimmed');
-                    if (highlightMode === 'highlight-sync' && !c.classList.contains('is-sync')) c.classList.add('dimmed');
-                    if (highlightMode === 'highlight-version' && !c.classList.contains('is-version')) c.classList.add('dimmed');
+                if (highlightMode !== 'highlight-full' && highlightMode) {
+                    if (!c.classList.contains(highlightMode.replace('highlight-', 'is-'))) c.classList.add('dimmed');
                 }
             });
         }
@@ -189,17 +186,32 @@
             document.getElementById('btn-start').style.display = 'none';
             const videoPlayer = document.getElementById('main-video');
             
-            // --- VIDEO UNLOCK FIX ---
-            // Wir "starten" das Video lautlos und pausieren sofort. 
-            // Das sagt dem Browser (iOS/Android): "Der User hat das Video erlaubt".
-            videoPlayer.muted = true;
-            videoPlayer.play().then(() => {
-                videoPlayer.pause();
-                videoPlayer.currentTime = 0;
-                // Jetzt Mute entfernen, damit es später mit Ton läuft (optional)
-                videoPlayer.muted = false; 
-            }).catch(e => console.log("Video Unlock Error (Browser Policy):", e));
-            // ------------------------
+            // --- AGGRESSIVER AUDIO UNLOCK ---
+            // Wir erzwingen Audio sofort beim Klick.
+            videoPlayer.volume = 1.0;
+            videoPlayer.muted = false; // Wichtig: Nicht muted!
+            
+            // Ein leeres Promise, um zu prüfen, ob es klappt
+            let startPromise = videoPlayer.play();
+            
+            if (startPromise !== undefined) {
+                startPromise.then(() => {
+                    // Audio erfolgreich gestartet -> Sofort pausieren und zurücksetzen
+                    videoPlayer.pause();
+                    videoPlayer.currentTime = 0;
+                    debugEl.innerText = "Audio: Unlocked";
+                }).catch(error => {
+                    // Fallback, wenn Browser streng ist (z.B. Batteriesparmodus)
+                    console.warn("Audio Autoplay blocked, switching to muted unlock", error);
+                    videoPlayer.muted = true;
+                    videoPlayer.play().then(() => {
+                        videoPlayer.pause();
+                        videoPlayer.currentTime = 0;
+                        videoPlayer.muted = false; // Versuch, es später wieder anzuschalten
+                    });
+                    debugEl.innerText = "Audio: Blocked (Muted Fallback)";
+                });
+            }
 
             const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v15-viewer-" + Math.floor(Math.random()*1000) });
             
@@ -207,53 +219,52 @@
                 message: (m) => {
                     const msg = m.message;
                     if(msg.slide !== undefined) deck.slide(msg.slide);
-                    
                     if(msg.action === 'morph_go') renderGo();
                     if(msg.action === 'highlight_finders') renderQRStructure('highlight-finders');
                     if(msg.action === 'highlight_sync') renderQRStructure('highlight-sync');
                     if(msg.action === 'highlight_version') renderQRStructure('highlight-version');
                     if(msg.action === 'morph_qr') renderQRStructure('highlight-full'); 
-
+                    
                     if(msg.action === 'damage') {
                         let dataCells = cells.filter(c => c.classList.contains('bit-1'));
-                        for(let i=0; i<20; i++) { 
-                            if(dataCells.length > 0) {
-                                let rng = Math.floor(Math.random()*dataCells.length);
-                                dataCells[rng].classList.add('damaged');
-                            }
-                        }
+                        for(let i=0; i<20; i++) if(dataCells.length > 0) dataCells[Math.floor(Math.random()*dataCells.length)].classList.add('damaged');
                     }
                     if(msg.action === 'heal') {
                         cells.forEach(c => c.classList.remove('damaged'));
                         renderQRStructure('highlight-full');
                     }
                     
-                    // --- SYNCHRONISATION FIX ---
+                    // --- HARD SYNC LOGIC ---
                     if(msg.action === 'video_sync') {
                         const container = document.getElementById('video-container');
                         
                         if(msg.videoState === 'play') {
                             container.classList.add('active');
                             
-                            // Berechne Zielzeit basierend auf Server-Timestamp
-                            // HINWEIS: Geräteuhren müssen halbwegs stimmen (+/- ein paar Sek)
+                            // 1. Zielzeit berechnen
                             let targetTime = (Date.now() - msg.startTime) / 1000;
                             if (targetTime < 0) targetTime = 0;
 
-                            // Nur springen (seek), wenn die Abweichung zu groß ist (> 0.5s),
-                            // um Stottern bei kleinen Netzwerkschwankungen zu vermeiden.
-                            if (Math.abs(videoPlayer.currentTime - targetTime) > 0.5) {
+                            // 2. Hard Sync: Wenn Differenz > 0.3s, erzwinge Sprung
+                            let drift = Math.abs(videoPlayer.currentTime - targetTime);
+                            debugEl.innerText = `Drift: ${drift.toFixed(3)}s`;
+
+                            // Wenn Video noch am Anfang ist oder Drift zu groß -> Springen
+                            if (drift > 0.3 || videoPlayer.currentTime < 0.1) {
                                 videoPlayer.currentTime = targetTime;
                             }
 
-                            // Promise handling für play(), um Fehler abzufangen
-                            let playPromise = videoPlayer.play();
-                            if (playPromise !== undefined) {
-                                playPromise.catch(error => {
-                                    console.error("Auto-Play prevented by browser:", error);
-                                    // Fallback: Muted abspielen, falls Sound das Problem ist
+                            // 3. Sicherstellen, dass Sound an ist
+                            videoPlayer.muted = false;
+
+                            // 4. Abspielen
+                            let p = videoPlayer.play();
+                            if (p !== undefined) {
+                                p.catch(e => {
+                                    // Letzter Ausweg: Ohne Ton abspielen, damit es wenigstens läuft
                                     videoPlayer.muted = true;
                                     videoPlayer.play();
+                                    debugEl.innerText = "Force Muted Play";
                                 });
                             }
                         } else {
