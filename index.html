@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Viewer - Final Sync</title>
+    <title>Torva Viewer - Final Sync</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
@@ -15,24 +15,17 @@
         :root { 
             --neon-blue: #00f2ff; 
             --matrix-green: #00ff41;
-            --damage-red: #ff0055;
+            --damage-gray: #444; /* Grau statt Rot */
             --bg-deep: #050505; 
         }
 
-        body { 
-            background: var(--bg-deep); 
-            overflow: hidden; 
-            font-family: 'Courier New', monospace; 
-            margin: 0; 
-        }
+        body { background: var(--bg-deep); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
 
         /* --- BACKGROUND LAYER (GRID) --- */
         #background-layer {
-            position: fixed;
-            top: 0; left: 0; width: 100vw; height: 100vh;
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             display: flex; justify-content: center; align-items: center;
-            z-index: 1; 
-            perspective: 1200px;
+            z-index: 1; perspective: 1200px;
         }
 
         .morph-grid {
@@ -56,8 +49,8 @@
         /* --- MODES --- */
         .mode-go { background: rgba(30, 30, 30, 0.8); border-radius: 4px; padding: 10px; transform: rotateX(20deg); }
         .mode-go .cell { border-radius: 50%; transform: scale(0.9); }
-        .mode-go .cell.black { background: #000; box-shadow: 2px 5px 10px rgba(0,0,0,0.8); }
-        .mode-go .cell.white { background: #fff; box-shadow: 2px 5px 10px rgba(0,0,0,0.8); }
+        .mode-go .cell.black { background: #000; }
+        .mode-go .cell.white { background: #fff; }
         .mode-go .cell.empty { opacity: 0.1; }
 
         .mode-binary { transform: scale(1.1); }
@@ -67,14 +60,13 @@
         .mode-qr .cell.active { background: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); }
         .mode-qr .cell.inactive { background: rgba(0, 242, 255, 0.05); transform: scale(0.2); }
 
-        /* --- DAMAGE EFFECT --- */
-        @keyframes glitch { 0% { opacity: 1; } 50% { opacity: 0.2; transform: translate(2px, -2px); } 100% { opacity: 1; } }
+        /* --- DAMAGE EFFECT (KEIN BLINKEN, GRAU, KEIN TEXT) --- */
         .cell.damaged {
-            background: var(--damage-red) !important;
-            box-shadow: 0 0 15px var(--damage-red) !important;
-            color: #000 !important;
-            animation: glitch 0.2s infinite;
-            border-radius: 0 !important;
+            background: var(--damage-gray) !important;
+            box-shadow: none !important;
+            opacity: 0.5;
+            border-radius: 2px !important;
+            transform: scale(0.8) !important;
         }
 
         /* --- VIDEO OVERLAY --- */
@@ -87,14 +79,9 @@
         video { width: 100%; height: 100%; object-fit: cover; }
 
         /* --- AR SECTION --- */
-        section[data-state="state-ar"] {
-            /* Hintergrund für AR Slide wird im Reveal-Theme gehandled oder per CSS override */
-            height: 100%;
-        }
-        
         #ar-viewer-container {
             width: 100%; height: 80vh;
-            background: #888; /* GRAUER HINTERGRUND WIE GEWÜNSCHT */
+            background: #222; /* Hintergrund für AR Slide */
             border-radius: 20px;
             overflow: hidden;
             position: relative;
@@ -102,10 +89,9 @@
 
         model-viewer {
             width: 100%; height: 100%;
-            background-color: #333; /* Dunkelgrau */
+            background-color: #222;
         }
 
-        /* Custom AR Button Style */
         .ar-button {
             background-color: white; border-radius: 4px; border: none;
             position: absolute; bottom: 20px; right: 20px;
@@ -140,15 +126,15 @@
     <div class="reveal">
         <div class="slides">
             <section data-state="state-go">
-
+                <h1 style="text-shadow: 0 0 20px black;">STRATEGY</h1>
             </section>
             
             <section data-state="state-binary">
-                <h3>DECOMPILING...</h3>
+                <h3>DECOMPILING</h3>
             </section>
 
             <section data-state="state-qr">
-                <h2 style="color: var(--neon-blue);">SYSTEM LINKED</h2>
+                <h2 style="color: var(--neon-blue);">LINKED</h2>
             </section>
 
             <section data-state="state-ar">
@@ -156,17 +142,13 @@
                     <model-viewer 
                         src="https://modelviewer.dev/shared-assets/models/Astronaut.glb"
                         ios-src="https://modelviewer.dev/shared-assets/models/Astronaut.usdz"
-                        poster="https://modelviewer.dev/shared-assets/models/Astronaut.png"
-                        alt="A 3D model of an astronaut"
+                        alt="3D Model"
                         shadow-intensity="1"
                         camera-controls
                         auto-rotate
                         ar
                         ar-modes="webxr scene-viewer quick-look">
-                        
-                        <button slot="ar-button" class="ar-button">
-                            👋 AR STARTEN
-                        </button>
+                        <button slot="ar-button" class="ar-button">👋 AR START</button>
                     </model-viewer>
                 </div>
             </section>
@@ -177,7 +159,6 @@
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
 
     <script>
-        // --- SETUP ---
         const deck = new Reveal();
         deck.initialize({ controls: false, progress: false, center: true, transition: 'fade' });
 
@@ -186,7 +167,6 @@
         const gridSize = 15; 
         let currentMode = 'go';
 
-        // Grid erstellen
         for(let i=0; i < gridSize*gridSize; i++) {
             let div = document.createElement('div');
             div.className = 'cell';
@@ -194,11 +174,9 @@
             cells.push(div);
         }
 
-        // --- RENDER FUNKTIONEN ---
         function renderGo() {
             currentMode = 'go';
             grid.className = 'morph-grid mode-go';
-            resetDamage(); // Beim Wechseln Schaden entfernen? Oder behalten? Hier resetten wir für clean look.
             cells.forEach((c, i) => {
                 c.innerHTML = ''; c.className = 'cell';
                 let r = Math.random();
@@ -221,9 +199,8 @@
             currentMode = 'qr';
             grid.className = 'morph-grid mode-qr';
             cells.forEach((c, i) => {
-                c.innerText = ''; 
+                c.innerHTML = ''; 
                 const x = i % gridSize; const y = Math.floor(i / gridSize);
-                // Simple Finder Patterns logic
                 const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
                 const isHollow = (x===1||x===2)&&(y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
                 
@@ -233,20 +210,27 @@
             });
         }
 
-        // --- DAMAGE LOGIK ---
+        // --- NEUE DAMAGE LOGIK ---
         function applyDamage() {
-            // Wähle 10 zufällige Zellen und mache sie kaputt
-            for(let k=0; k<10; k++) {
+            // Wähle zufällige Zellen, aber ignoriere die Finder Patterns (Ecken)
+            for(let k=0; k<15; k++) {
                 const r = Math.floor(Math.random() * cells.length);
-                cells[r].classList.add('damaged');
-                cells[r].innerText = "ERR"; // Text Glitch
+                const x = r % gridSize;
+                const y = Math.floor(r / gridSize);
+                
+                // Prüfen ob Zelle in einer Ecke ist (Finder Pattern)
+                const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
+                
+                if (!isFinder) {
+                    cells[r].classList.add('damaged');
+                    cells[r].innerHTML = ''; // Kein Text mehr
+                }
             }
         }
 
         function resetDamage() {
             cells.forEach(c => {
                 c.classList.remove('damaged');
-                if(currentMode === 'go') c.innerText = ''; // Cleanup text
             });
         }
 
@@ -257,38 +241,27 @@
         function initSystem() {
             const btn = document.getElementById('btn-start');
             btn.innerHTML = "SYNCING...";
-            
-            // iOS Unlock Trick
             videoPlayer.play().then(() => {
                 videoPlayer.pause();
                 videoPlayer.currentTime = 0;
-            }).catch(e => console.log("Autoplay prevent", e));
+            }).catch(e => console.log(e));
 
             setTimeout(() => {
                 btn.style.display = 'none';
-                
                 const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v_" + Date.now() });
                 
                 pubnub.addListener({
                     message: (m) => {
                         const msg = m.message;
-                        console.log("Received:", msg);
-
-                        // 1. SLIDES / MODES
                         if(msg.slide !== undefined) deck.slide(msg.slide);
                         if(msg.action === 'morph_go') renderGo();
                         if(msg.action === 'morph_qr') renderQR();
-                        
-                        // 2. DAMAGE / HEAL
                         if(msg.action === 'damage') applyDamage();
                         if(msg.action === 'heal') resetDamage();
-
-                        // 3. VIDEO SYNC
                         if(msg.action === 'video_sync') handleVideoSync(msg);
                     }
                 });
                 pubnub.subscribe({ channels: ['PrasiW.Woche'] });
-
                 renderGo();
             }, 500);
         }
@@ -310,19 +283,13 @@
             }
         }
 
-        // Reveal Slide Change Listener
         deck.on('slidechanged', event => {
             const state = event.currentSlide.getAttribute('data-state');
             if(state === 'state-go') { renderGo(); document.getElementById('background-layer').style.display = 'flex'; }
             if(state === 'state-binary') { renderBinary(); document.getElementById('background-layer').style.display = 'flex'; }
             if(state === 'state-qr') { renderQR(); document.getElementById('background-layer').style.display = 'flex'; }
-            
-            // Bei AR Slide Hintergrund ausblenden, damit man das graue Modell sieht
-            if(state === 'state-ar') {
-                document.getElementById('background-layer').style.display = 'none';
-            }
+            if(state === 'state-ar') { document.getElementById('background-layer').style.display = 'none'; }
         });
-
         renderGo();
     </script>
 </body>
