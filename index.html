@@ -31,7 +31,7 @@
             top: 0; left: 0; width: 100vw; height: 100vh;
             display: flex; justify-content: center; align-items: center;
             z-index: 1; 
-            perspective: 1200px; /* Mehr Tiefe für 3D Effekte */
+            perspective: 1200px;
         }
 
         .morph-grid {
@@ -44,87 +44,50 @@
             transform-style: preserve-3d;
         }
 
-        /* --- DIE ZELLEN (DOTS/BITS) --- */
         .cell { 
             width: 100%; height: 100%; 
             display: flex; justify-content: center; align-items: center;
-            font-weight: bold;
-            font-size: 1.2vmin;
+            font-weight: bold; font-size: 1.2vmin;
             transition: all 0.6s cubic-bezier(0.68, -0.55, 0.265, 1.55);
             position: relative;
         }
 
-        /* --- MODUS 1: GO BRETT (Physical) --- */
-        .mode-go { 
-            background: rgba(30, 30, 30, 0.8); 
-            border-radius: 4px; 
-            padding: 10px;
-            box-shadow: 0 20px 50px rgba(0,0,0,0.8);
-            transform: rotateX(20deg) rotateY(0deg);
-        }
-        .mode-go .cell { 
-            border-radius: 50%; 
-            font-size: 0; /* Text verstecken */
-            transform: scale(0.9);
-        }
-        .mode-go .cell.black { 
-            background: radial-gradient(circle at 35% 35%, #555, #000); 
-            box-shadow: 2px 5px 10px var(--stone-shadow);
-        }
-        .mode-go .cell.white { 
-            background: radial-gradient(circle at 35% 35%, #fff, #bbb); 
-            box-shadow: 2px 5px 10px var(--stone-shadow);
-        }
+        /* --- MODI (Go, Binary, QR) --- */
+        .mode-go { background: rgba(30, 30, 30, 0.8); border-radius: 4px; padding: 10px; box-shadow: 0 20px 50px rgba(0,0,0,0.8); transform: rotateX(20deg) rotateY(0deg); }
+        .mode-go .cell { border-radius: 50%; font-size: 0; transform: scale(0.9); }
+        .mode-go .cell.black { background: radial-gradient(circle at 35% 35%, #555, #000); box-shadow: 2px 5px 10px var(--stone-shadow); }
+        .mode-go .cell.white { background: radial-gradient(circle at 35% 35%, #fff, #bbb); box-shadow: 2px 5px 10px var(--stone-shadow); }
         .mode-go .cell.empty { opacity: 0.1; background: transparent; transform: scale(0.1); }
 
-        /* --- MODUS 2: MATRIX BINÄR (Digital Chaos) --- */
-        .mode-binary {
-            background: transparent;
-            gap: 2px;
-            transform: rotateX(0deg) scale(1.1); /* Frontalansicht */
-        }
-        .mode-binary .cell {
-            border-radius: 0%;
-            background: transparent;
-            color: var(--matrix-green);
-            text-shadow: 0 0 5px var(--matrix-green);
-            font-family: 'Consolas', monospace;
-            font-size: 2vmin;
-            opacity: 0.8;
-            box-shadow: none;
-        }
-        /* Flacker-Animation für Binär */
-        @keyframes flicker {
-            0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; }
-        }
+        .mode-binary { background: transparent; gap: 2px; transform: rotateX(0deg) scale(1.1); }
+        .mode-binary .cell { border-radius: 0%; background: transparent; color: var(--matrix-green); text-shadow: 0 0 5px var(--matrix-green); font-family: 'Consolas', monospace; font-size: 2vmin; opacity: 0.8; box-shadow: none; }
+        @keyframes flicker { 0% { opacity: 1; } 50% { opacity: 0.3; } 100% { opacity: 1; } }
         .mode-binary .cell.flicker { animation: flicker 0.1s infinite; color: #fff; }
 
-        /* --- MODUS 3: QR CODE (High Tech) --- */
-        .mode-qr { 
-            background: transparent; 
-            gap: 3px; 
-            transform: rotateX(10deg) rotateY(-5deg); /* Leichter Winkel */
+        .mode-qr { background: transparent; gap: 3px; transform: rotateX(10deg) rotateY(-5deg); }
+        .mode-qr .cell { border-radius: 2px; font-size: 0; color: transparent; }
+        .mode-qr .cell.active { background: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); transform: scale(1); }
+        .mode-qr .cell.inactive { background: rgba(0, 242, 255, 0.05); transform: scale(0.2); box-shadow: none; }
+
+        /* --- VIDEO LAYER (NEU) --- */
+        #video-container {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 50; 
+            background: black;
+            opacity: 0; pointer-events: none; /* Versteckt */
+            transition: opacity 0.5s;
+            display: flex; justify-content: center; align-items: center;
         }
-        .mode-qr .cell { 
-            border-radius: 2px; 
-            font-size: 0; 
-            color: transparent;
-        }
-        .mode-qr .cell.active { 
-            background: var(--neon-blue); 
-            box-shadow: 0 0 10px var(--neon-blue);
-            transform: scale(1);
-        }
-        .mode-qr .cell.inactive { 
-            background: rgba(0, 242, 255, 0.05); 
-            transform: scale(0.2); 
-            box-shadow: none;
+        #video-container.active { opacity: 1; pointer-events: all; }
+        
+        video {
+            width: 100%; height: 100%; object-fit: cover;
         }
 
         /* --- UTILS --- */
         #btn-start { 
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            border: 2px solid var(--neon-blue); color: var(--neon-blue); background: transparent; 
+            border: 2px solid var(--neon-blue); color: var(--neon-blue); background: rgba(0,0,0,0.8); 
             padding: 20px 40px; font-size: 1.5rem; letter-spacing: 3px; cursor: pointer;
             z-index: 100; transition: 0.3s;
             box-shadow: 0 0 30px rgba(0, 242, 255, 0.2);
@@ -133,15 +96,19 @@
 
         .status-log {
             position: absolute; bottom: 5vh; left: 5vw;
-            color: var(--matrix-green); font-size: 0.9rem;
-            text-align: left; opacity: 0.7;
-            font-family: monospace;
+            color: var(--matrix-green); font-size: 0.9rem; text-align: left; opacity: 0.7; font-family: monospace;
         }
     </style>
 </head>
 <body>
 
     <button id="btn-start" onclick="initSystem()">INITIALIZE PROTOCOL</button>
+
+    <div id="video-container">
+        <video id="main-video" playsinline preload="auto">
+            <source src="https://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4" type="video/mp4">
+        </video>
+    </div>
 
     <div id="background-layer">
         <div id="grid" class="morph-grid mode-go"></div>
@@ -170,12 +137,16 @@
     <script>
         // --- SETUP ---
         const deck = new Reveal();
-        deck.initialize({ controls: false, progress: false, center: true, transition: 'none' }); // Transition none, wir machen das selbst
+        deck.initialize({ controls: false, progress: false, center: true, transition: 'none' });
 
         const grid = document.getElementById('grid');
         const cells = [];
         const gridSize = 15;
         let binaryInterval = null;
+
+        // Video Elemente
+        const videoContainer = document.getElementById('video-container');
+        const videoPlayer = document.getElementById('main-video');
 
         // Grid erzeugen
         for(let i=0; i < gridSize*gridSize; i++) {
@@ -185,53 +156,37 @@
             cells.push(div);
         }
 
-        // --- RENDER FUNCTIONS ---
-
+        // --- RENDER FUNCTIONS (GO / BINARY / QR) ---
         function renderGo() {
             clearInterval(binaryInterval);
             grid.className = 'morph-grid mode-go';
-            
             cells.forEach((c, i) => {
-                c.innerHTML = ''; // Text entfernen
-                c.className = 'cell'; // Reset
-                
-                // Verzögerung für organischen Aufbau
+                c.innerHTML = ''; c.className = 'cell';
                 setTimeout(() => {
                     let r = Math.random();
                     if(r > 0.75) c.classList.add('black');
                     else if(r > 0.55) c.classList.add('white');
                     else c.classList.add('empty');
-                }, i * 1.5); // Wellenbewegung
+                }, i * 1.5);
             });
         }
 
         function renderBinary() {
             grid.className = 'morph-grid mode-binary';
-            
-            // 1. Initialer Wechsel
             cells.forEach((c, i) => {
                 c.classList.remove('black', 'white', 'empty', 'active', 'inactive');
-                
-                // Staggered Delay für "Matrix Regen" Effekt
-                const x = i % gridSize;
-                const y = Math.floor(i / gridSize);
-                const delay = (x + y) * 20; // Diagonale Welle
-
+                const delay = ((i % gridSize) + Math.floor(i / gridSize)) * 20;
                 setTimeout(() => {
                     c.innerText = Math.random() > 0.5 ? '1' : '0';
                     if(Math.random() > 0.9) c.classList.add('flicker');
                 }, delay);
             });
-
-            // 2. Loop für lebendige Zahlen (Das "Flexen")
             if (binaryInterval) clearInterval(binaryInterval);
             binaryInterval = setInterval(() => {
-                // Ändere zufällig 30 Zellen pro Frame
                 for(let k=0; k<30; k++) {
-                    const randIndex = Math.floor(Math.random() * cells.length);
-                    cells[randIndex].innerText = Math.random() > 0.5 ? '1' : '0';
-                    // Farb-Glitch
-                    cells[randIndex].style.color = Math.random() > 0.9 ? '#fff' : 'var(--matrix-green)';
+                    const r = Math.floor(Math.random() * cells.length);
+                    cells[r].innerText = Math.random() > 0.5 ? '1' : '0';
+                    cells[r].style.color = Math.random() > 0.9 ? '#fff' : 'var(--matrix-green)';
                 }
             }, 50);
         }
@@ -239,34 +194,95 @@
         function renderQR() {
             clearInterval(binaryInterval);
             grid.className = 'morph-grid mode-qr';
-
             cells.forEach((c, i) => {
-                c.innerText = ''; // Zahlen weg
-                c.style.color = ''; // Farbe reset
-                c.classList.remove('flicker');
-
-                const x = i % gridSize; 
-                const y = Math.floor(i / gridSize);
-                
-                // QR Finder Patterns Logik
+                c.innerText = ''; c.style.color = ''; c.classList.remove('flicker');
+                const x = i % gridSize; const y = Math.floor(i / gridSize);
                 const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
-                const isHollow = (x===1||x===2) && (y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
-                
-                // Schneller, technischer Aufbau (weniger Delay als Go)
+                const isHollow = (x===1||x===2)&&(y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
                 setTimeout(() => {
-                    c.className = 'cell'; // Basis reset
-                    if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) {
-                        c.classList.add('active');
-                    } else {
-                        c.classList.add('inactive');
-                    }
-                }, Math.random() * 500); // Zufälliges "Aufploppen" wie Datenpakete
+                    c.className = 'cell';
+                    if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) c.classList.add('active');
+                    else c.classList.add('inactive');
+                }, Math.random() * 500);
             });
         }
 
-        // --- LOGIC HOOKS ---
-        
-        // Reveal.js Event Listener für Slide-Wechsel
+        // --- PUBNUB & SYNC LOGIC ---
+
+        function initSystem() {
+            const btn = document.getElementById('btn-start');
+            btn.innerHTML = "SYNCING...";
+            
+            // HACK: iOS Video Unlock
+            // Wir müssen das Video einmal kurz starten und stoppen innerhalb eines User-Events (Klick),
+            // damit wir es später programmatisch abspielen dürfen.
+            videoPlayer.play().then(() => {
+                videoPlayer.pause();
+                videoPlayer.currentTime = 0;
+            }).catch(e => console.log("Autoplay Setup Error:", e));
+
+            setTimeout(() => {
+                btn.style.display = 'none';
+                
+                // PubNub Setup
+                const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v_" + Date.now() });
+                
+                pubnub.addListener({
+                    message: (m) => {
+                        const msg = m.message;
+                        
+                        // Slide / Mode Logic
+                        if(msg.slide !== undefined && msg.slide !== null) deck.slide(msg.slide);
+                        if(msg.action === 'morph_go') renderGo();
+                        if(msg.action === 'morph_qr') renderQR();
+
+                        // VIDEO SYNC LOGIC
+                        if(msg.action === 'video_sync') {
+                            handleVideoSync(msg);
+                        }
+                    }
+                });
+                pubnub.subscribe({ channels: ['PrasiW.Woche'] });
+
+                renderGo(); // Start Visuals
+            }, 500);
+        }
+
+        function handleVideoSync(data) {
+            if (data.videoState === 'stop') {
+                videoContainer.classList.remove('active');
+                videoPlayer.pause();
+                videoPlayer.currentTime = 0;
+                return;
+            }
+
+            if (data.videoState === 'play') {
+                // Video sichtbar machen
+                videoContainer.classList.add('active');
+                
+                // Berechnen, wann es losgehen soll
+                const targetTime = data.startTime;
+                const now = Date.now();
+                const delay = targetTime - now;
+
+                if (delay > 0) {
+                    // Wir sind früh dran, warten auf den Sync-Moment
+                    console.log(`Waiting ${delay}ms to start video...`);
+                    setTimeout(() => {
+                        videoPlayer.currentTime = 0;
+                        videoPlayer.play();
+                    }, delay);
+                } else {
+                    // Wir sind zu spät (Netzwerklag), springen zur richtigen Stelle
+                    const offsetSeconds = Math.abs(delay) / 1000;
+                    console.log(`Late by ${offsetSeconds}s, seeking...`);
+                    videoPlayer.currentTime = offsetSeconds;
+                    videoPlayer.play();
+                }
+            }
+        }
+
+        // Reveal.js Hook
         deck.on('slidechanged', event => {
             const state = event.currentSlide.getAttribute('data-state');
             if(state === 'state-go') renderGo();
@@ -274,33 +290,6 @@
             if(state === 'state-qr') renderQR();
         });
 
-        function initSystem() {
-            document.getElementById('btn-start').style.display = 'none';
-            
-            // PubNub Setup
-            const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v_" + Date.now() });
-            
-            pubnub.addListener({
-                message: (m) => {
-                    const msg = m.message;
-                    // Steuerung über PubNub
-                    if(msg.phase === "go") deck.slide(0);
-                    if(msg.phase === "binary") deck.slide(1);
-                    if(msg.phase === "qr") deck.slide(2);
-                    
-                    // Direct Override (Falls du ohne Slides steuern willst)
-                    if(msg.action === "render_go") renderGo();
-                    if(msg.action === "render_binary") renderBinary();
-                    if(msg.action === "render_qr") renderQR();
-                }
-            });
-            pubnub.subscribe({ channels: ['PrasiW.Woche'] });
-
-            // Start Animation
-            renderGo();
-        }
-
-        // Init Go board visually on load (static)
         renderGo();
 
     </script>
