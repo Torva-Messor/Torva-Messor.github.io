@@ -2,298 +2,260 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Viewer - Final Sync</title>
+    <title>Torva Viewer - Structure Analysis</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
-    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/theme/black.min.css">
 
     <style>
-        /* --- THEME --- */
         :root { 
             --neon-blue: #00f2ff; 
-            --matrix-green: #00ff41;
+            --neon-purple: #bc13fe; 
+            --matrix-green: #00ff41; 
             --damage-gray: #ff0055; 
             --bg-deep: #050505; 
         }
-
         body { background: var(--bg-deep); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
-
-        /* --- BACKGROUND LAYER (GRID) --- */
-        #background-layer {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            display: flex; justify-content: center; align-items: center;
-            z-index: 1; perspective: 1200px;
+        
+        #background-layer { 
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
+            display: flex; justify-content: center; align-items: center; 
+            z-index: 1; perspective: 1200px; 
         }
 
         .morph-grid {
             display: grid;
             grid-template-columns: repeat(15, 1fr);
             grid-template-rows: repeat(15, 1fr);
-            gap: 4px;
-            width: 60vmin; height: 60vmin;
+            gap: 4px; width: 75vmin; height: 75vmin;
             transition: transform 1s cubic-bezier(0.2, 0.8, 0.2, 1);
             transform-style: preserve-3d;
         }
 
         .cell { 
             width: 100%; height: 100%; 
-            display: flex; justify-content: center; align-items: center;
-            font-weight: bold; font-size: 1.2vmin;
-            transition: all 0.6s;
-            position: relative;
+            transition: all 0.6s cubic-bezier(0.16, 1, 0.3, 1); 
+            position: relative; border-radius: 2px; 
+            opacity: 0.1; /* Standard ist fast unsichtbar im QR mode bis aktiviert */
+            background: #333;
         }
 
-        /* --- MODES --- */
-        .mode-go { background: rgba(30, 30, 30, 0.8); border-radius: 4px; padding: 10px; transform: rotateX(20deg); }
-        .mode-go .cell { border-radius: 50%; transform: scale(0.9); }
-        .mode-go .cell.black { background: #000; }
-        .mode-go .cell.white { background: #fff; }
-        .mode-go .cell.empty { opacity: 0.1; }
+        /* --- GO MODE --- */
+        .mode-go .cell { border-radius: 50%; opacity: 1; transform: scale(0.85); }
+        .mode-go .cell.black { background: #111; box-shadow: inset 2px 2px 5px rgba(255,255,255,0.1); }
+        .mode-go .cell.white { background: #eee; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
+        .mode-go .cell.empty { opacity: 0.05; background: #fff; }
 
-        .mode-binary { transform: scale(1.1); }
-        .mode-binary .cell { color: var(--matrix-green); font-family: 'Consolas'; font-size: 2vmin; text-shadow: 0 0 5px var(--matrix-green); }
+        /* --- QR STRUCTURE HIGHLIGHTS --- */
         
-        .mode-qr { transform: rotateX(10deg) rotateY(-5deg); gap: 2px; }
-        .mode-qr .cell.active { background: var(--neon-blue); box-shadow: 0 0 10px var(--neon-blue); }
-        .mode-qr .cell.inactive { background: rgba(0, 242, 255, 0.05); transform: scale(0.2); }
+        /* Basis für alle QR Zellen */
+        .mode-qr .cell { transform: scale(0.9); }
 
-        /* --- DAMAGE EFFECT --- */
-        .cell.damaged {
-            background: var(--damage-gray) !important;
-            box-shadow: none !important;
-            opacity: 0.5;
-            border-radius: 2px !important;
-            transform: scale(0.8) !important;
+        /* 1. FINDER PATTERNS (Position) - Blau */
+        .cell.is-finder { background: var(--neon-blue); }
+        .highlight-finders .cell.is-finder { 
+            opacity: 1; 
+            box-shadow: 0 0 20px var(--neon-blue); 
+            z-index: 10;
         }
 
-        /* --- VIDEO OVERLAY --- */
-        #video-container {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 50; background: black; opacity: 0; pointer-events: none;
-            transition: opacity 0.5s; display: flex; justify-content: center; align-items: center;
+        /* 2. SYNC / TIMING PATTERNS - Grün */
+        .cell.is-sync { background: var(--matrix-green); border-radius: 50%; }
+        .highlight-sync .cell.is-sync { 
+            opacity: 1; 
+            box-shadow: 0 0 15px var(--matrix-green); 
+            transform: scale(0.6);
         }
+
+        /* 3. VERSION DATA - Lila */
+        .cell.is-version { background: var(--neon-purple); }
+        .highlight-version .cell.is-version { 
+            opacity: 1; 
+            box-shadow: 0 0 15px var(--neon-purple); 
+            transform: scale(0.8) rotate(45deg);
+        }
+
+        /* 4. DATA - Weiß/Grau */
+        .cell.is-data { background: #fff; }
+        .highlight-full .cell.is-data { opacity: 1; }
+        .highlight-full .cell.is-finder { opacity: 1; background: var(--neon-blue); }
+        .highlight-full .cell.is-sync { opacity: 1; background: #fff; transform: scale(0.9); border-radius: 2px; } /* Im Full Mode sieht Sync normal aus */
+        .highlight-full .cell.is-version { opacity: 1; background: #fff; transform: scale(0.9) rotate(0deg); }
+
+        /* Dimming Logic: Wenn eine Highlight-Klasse aktiv ist, sind alle anderen dimmed */
+        .cell.dimmed { opacity: 0.05 !important; transform: scale(0.5) !important; box-shadow: none !important; }
+
+        /* --- DAMAGE --- */
+        .cell.damaged { 
+            background: var(--damage-gray) !important; 
+            box-shadow: 0 0 10px var(--damage-gray) !important; 
+            opacity: 1 !important; 
+            transform: scale(1.1) rotate(random(360)deg) !important; 
+            animation: glitch 0.2s infinite;
+        }
+
+        @keyframes glitch { 0% { transform: translate(0,0); } 20% { transform: translate(-2px,2px); } 40% { transform: translate(-2px,-2px); } 60% { transform: translate(2px,2px); } 80% { transform: translate(2px,-2px); } 100% { transform: translate(0,0); } }
+
+        /* Video & AR */
+        #video-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; background: black; opacity: 0; pointer-events: none; transition: opacity 0.5s; display: flex; justify-content: center; align-items: center; }
         #video-container.active { opacity: 1; pointer-events: all; }
         video { width: 100%; height: 100%; object-fit: cover; }
-
-        /* --- AR SECTION --- */
-        #ar-viewer-container {
-            width: 100%; height: 80vh;
-            background: #222; 
-            border-radius: 20px;
-            overflow: hidden;
-            position: relative;
-        }
-
-        model-viewer {
-            width: 100%; height: 100%;
-            background-color: #222;
-        }
-
-        .ar-button {
-            background-color: white; border-radius: 4px; border: none;
-            position: absolute; bottom: 20px; right: 20px;
-            padding: 12px 24px; font-weight: bold; color: black;
-            font-family: sans-serif; cursor: pointer;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-        }
-
-        /* --- START BUTTON --- */
-        #btn-start { 
-            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            border: 2px solid var(--neon-blue); color: var(--neon-blue); background: rgba(0,0,0,0.9); 
-            padding: 20px 40px; font-size: 1.5rem; letter-spacing: 3px; cursor: pointer;
-            z-index: 100; transition: 0.3s;
-        }
+        #ar-viewer-container { width: 100%; height: 80vh; background: #222; border-radius: 20px; overflow: hidden; position: relative; }
+        model-viewer { width: 100%; height: 100%; }
+        #btn-start { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 2px solid var(--neon-blue); color: var(--neon-blue); background: rgba(0,0,0,0.9); padding: 20px 40px; font-size: 1.5rem; cursor: pointer; z-index: 100; font-family: sans-serif; text-transform: uppercase; letter-spacing: 3px; }
     </style>
 </head>
 <body>
+    <button id="btn-start" onclick="initSystem()">Initialize System</button>
+    <div id="video-container"><video id="main-video" playsinline><source src="qr-code-pubnub-torva-project.mp4" type="video/mp4"></video></div>
+    <div id="background-layer"><div id="grid" class="morph-grid mode-go"></div></div>
 
-    <button id="btn-start" onclick="initSystem()">INITIALIZE SYSTEM</button>
-
-    <div id="video-container">
-        <video id="main-video" playsinline webkit-playsinline preload="auto">
-            <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
-        </video>
-    </div>
-
-    <div id="background-layer">
-        <div id="grid" class="morph-grid mode-go"></div>
-    </div>
-
-    <div class="reveal">
-        <div class="slides">
-            <section data-state="state-go">
-                </section>
-            
-            <section data-state="state-binary">
-                </section>
-
-            <section data-state="state-qr">
-                </section>
-
-            <section data-state="state-ar">
-                <div id="ar-viewer-container">
-                    <model-viewer 
-                        src="https://modelviewer.dev/shared-assets/models/Astronaut.glb"
-                        ios-src="https://modelviewer.dev/shared-assets/models/Astronaut.usdz"
-                        alt="3D Model"
-                        shadow-intensity="1"
-                        camera-controls
-                        auto-rotate
-                        ar
-                        ar-modes="webxr scene-viewer quick-look">
-                        <button slot="ar-button" class="ar-button">👋 AR START</button>
-                    </model-viewer>
-                </div>
-            </section>
-        </div>
-    </div>
+    <div class="reveal"><div class="slides">
+        <section data-state="state-go"></section>
+        <section data-state="state-qr"></section>
+        <section data-state="state-ar">
+            <div id="ar-viewer-container">
+                <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar camera-controls auto-rotate shadow-intensity="1"></model-viewer>
+            </div>
+        </section>
+    </div></div>
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
-
     <script>
         const deck = new Reveal();
-        deck.initialize({ controls: false, progress: false, center: true, transition: 'fade' });
-
+        deck.initialize({ controls: false, progress: false, hash: false, transition: 'fade' });
+        
         const grid = document.getElementById('grid');
         const cells = [];
-        const gridSize = 15; 
-        let currentMode = 'go';
+        const gridSize = 15;
 
-        for(let i=0; i < gridSize*gridSize; i++) {
+        // Init Grid
+        for(let i=0; i<gridSize*gridSize; i++) {
             let div = document.createElement('div');
             div.className = 'cell';
             grid.appendChild(div);
             cells.push(div);
         }
 
+        function clearClasses() {
+            grid.classList.remove('mode-go', 'mode-qr', 'highlight-finders', 'highlight-sync', 'highlight-version', 'highlight-full');
+            cells.forEach(c => {
+                c.className = 'cell'; // Reset cell classes
+            });
+        }
+
         function renderGo() {
-            currentMode = 'go';
-            grid.className = 'morph-grid mode-go';
-            cells.forEach((c, i) => {
-                c.innerHTML = ''; c.className = 'cell';
+            clearClasses();
+            grid.classList.add('mode-go');
+            cells.forEach(c => {
                 let r = Math.random();
-                if(r > 0.75) c.classList.add('black');
-                else if(r > 0.55) c.classList.add('white');
+                if(r > 0.8) c.classList.add('black');
+                else if(r > 0.6) c.classList.add('white');
                 else c.classList.add('empty');
             });
         }
 
-        function renderBinary() {
-            currentMode = 'binary';
-            grid.className = 'morph-grid mode-binary';
-            cells.forEach(c => {
-                c.className = 'cell';
-                c.innerText = Math.random() > 0.5 ? '1' : '0';
-            });
+        function identifyCellType(x, y) {
+            // 1. Finder Patterns (Corners: TopLeft, TopRight, BottomLeft) - 4x4 blocks here for visibility
+            if ((x < 4 && y < 4) || (x > 10 && y < 4) || (x < 4 && y > 10)) return 'is-finder';
+            
+            // 2. Sync / Timing Patterns (Connecting lines between finders)
+            // Horizontal line at y=2, Vertical line at x=2
+            if ((y === 2 && x >= 4 && x <= 10) || (x === 2 && y >= 4 && y <= 10)) return 'is-sync';
+
+            // 3. Version Info / Format Info (Areas adjacent to finders)
+            // Strips next to finders
+            if ((y === 4 && x < 4) || (x === 4 && y < 4)) return 'is-version'; // Near TL
+            if (y === 4 && x > 10) return 'is-version'; // Near TR
+            if (x === 4 && y > 10) return 'is-version'; // Near BL
+
+            return 'is-data';
         }
 
-        function renderQR() {
-            currentMode = 'qr';
-            grid.className = 'morph-grid mode-qr';
-            cells.forEach((c, i) => {
-                c.innerHTML = ''; 
-                const x = i % gridSize; const y = Math.floor(i / gridSize);
-                const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
-                const isHollow = (x===1||x===2)&&(y===1||y===2) || (x===12||x===13)&&(y===1||y===2) || (x===1||x===2)&&(y===12||y===13);
-                
-                c.className = 'cell';
-                if ((isFinder && !isHollow) || (!isFinder && Math.random() > 0.5)) c.classList.add('active');
-                else c.classList.add('inactive');
-            });
-        }
-
-        function applyDamage() {
-            for(let k=0; k<15; k++) {
-                const r = Math.floor(Math.random() * cells.length);
-                const x = r % gridSize;
-                const y = Math.floor(r / gridSize);
-                const isFinder = (x<4 && y<4) || (x>10 && y<4) || (x<4 && y>10);
-                
-                if (!isFinder) {
-                    cells[r].classList.add('damaged');
-                    cells[r].innerHTML = ''; 
-                }
+        function renderQRStructure(highlightMode) {
+            // Remove previous highlights but keep base QR mode
+            grid.classList.remove('highlight-finders', 'highlight-sync', 'highlight-version', 'highlight-full');
+            
+            // If switching from GO mode, setup the base types first
+            if(!grid.classList.contains('mode-qr')) {
+                clearClasses();
+                grid.classList.add('mode-qr');
+                cells.forEach((c, i) => {
+                    const x = i % gridSize; 
+                    const y = Math.floor(i / gridSize);
+                    const type = identifyCellType(x, y);
+                    c.classList.add(type);
+                });
             }
-        }
 
-        function resetDamage() {
+            // Apply specific highlight class to container
+            if(highlightMode) grid.classList.add(highlightMode);
+
+            // Logic to dim non-active elements based on mode
             cells.forEach(c => {
-                c.classList.remove('damaged');
+                c.classList.remove('dimmed'); // Reset dim first
+                
+                if (highlightMode === 'highlight-finders' && !c.classList.contains('is-finder')) c.classList.add('dimmed');
+                if (highlightMode === 'highlight-sync' && !c.classList.contains('is-sync')) c.classList.add('dimmed');
+                if (highlightMode === 'highlight-version' && !c.classList.contains('is-version')) c.classList.add('dimmed');
+                // Full mode doesn't dim anything
             });
         }
-
-        // --- PUBNUB & SYNC ---
-        const videoContainer = document.getElementById('video-container');
-        const videoPlayer = document.getElementById('main-video');
 
         function initSystem() {
-            const btn = document.getElementById('btn-start');
-            btn.innerHTML = "SYNCING...";
+            document.getElementById('btn-start').style.display = 'none';
+            const videoPlayer = document.getElementById('main-video');
             
-            // AUDIO FIX: Explizit un-muten durch User-Interaktion
-            videoPlayer.muted = false; 
+            const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v15-viewer" });
+            
+            pubnub.addListener({
+                message: (m) => {
+                    const msg = m.message;
+                    if(msg.slide !== undefined) deck.slide(msg.slide);
+                    
+                    // --- ACTIONS ---
+                    if(msg.action === 'morph_go') renderGo();
+                    
+                    // Granular Structure Highlighting
+                    if(msg.action === 'highlight_finders') renderQRStructure('highlight-finders');
+                    if(msg.action === 'highlight_sync') renderQRStructure('highlight-sync');
+                    if(msg.action === 'highlight_version') renderQRStructure('highlight-version');
+                    if(msg.action === 'morph_qr') renderQRStructure('highlight-full'); // Shows everything
 
-            // iOS Hack: Video kurz abspielen (jetzt mit Ton erlaubt durch Klick)
-            videoPlayer.play().then(() => {
-                videoPlayer.pause();
-                videoPlayer.currentTime = 0;
-            }).catch(e => console.log("Autoplay blocked or error:", e));
-
-            setTimeout(() => {
-                btn.style.display = 'none';
-                const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v_" + Date.now() });
-                
-                pubnub.addListener({
-                    message: (m) => {
-                        const msg = m.message;
-                        if(msg.slide !== undefined) deck.slide(msg.slide);
-                        if(msg.action === 'morph_go') renderGo();
-                        if(msg.action === 'morph_qr') renderQR();
-                        if(msg.action === 'damage') applyDamage();
-                        if(msg.action === 'heal') resetDamage();
-                        if(msg.action === 'video_sync') handleVideoSync(msg);
+                    if(msg.action === 'damage') {
+                        // Find data cells and damage them
+                        let dataCells = cells.filter(c => c.classList.contains('is-data'));
+                        for(let i=0; i<15; i++) {
+                            if(dataCells.length > 0) {
+                                let rng = Math.floor(Math.random()*dataCells.length);
+                                dataCells[rng].classList.add('damaged');
+                            }
+                        }
                     }
-                });
-                pubnub.subscribe({ channels: ['PrasiW.Woche'] });
-                renderGo();
-            }, 500);
-        }
-
-        function handleVideoSync(data) {
-            if (data.videoState === 'stop') {
-                videoContainer.classList.remove('active');
-                videoPlayer.pause();
-                videoPlayer.currentTime = 0;
-            } else if (data.videoState === 'play') {
-                videoContainer.classList.add('active');
-                const latencySeconds = (Date.now() - data.startTime) / 1000;
-                
-                // Stelle sicher, dass Video laut ist beim Abspielen
-                videoPlayer.muted = false; 
-                videoPlayer.currentTime = Math.max(0, latencySeconds);
-                
-                const playPromise = videoPlayer.play();
-                if (playPromise !== undefined) {
-                    playPromise.catch(error => {
-                        console.log("Playback failed:", error);
-                    });
+                    if(msg.action === 'heal') {
+                        cells.forEach(c => c.classList.remove('damaged'));
+                        renderQRStructure('highlight-full');
+                    }
+                    
+                    if(msg.action === 'video_sync') {
+                        const container = document.getElementById('video-container');
+                        if(msg.videoState === 'play') {
+                            container.classList.add('active');
+                            videoPlayer.currentTime = (Date.now() - msg.startTime) / 1000;
+                            videoPlayer.play();
+                        } else {
+                            container.classList.remove('active');
+                            videoPlayer.pause();
+                        }
+                    }
                 }
-            }
+            });
+            
+            pubnub.subscribe({ channels: ['PrasiW.Woche'] });
+            renderGo();
         }
-
-        deck.on('slidechanged', event => {
-            const state = event.currentSlide.getAttribute('data-state');
-            if(state === 'state-go') { renderGo(); document.getElementById('background-layer').style.display = 'flex'; }
-            if(state === 'state-binary') { renderBinary(); document.getElementById('background-layer').style.display = 'flex'; }
-            if(state === 'state-qr') { renderQR(); document.getElementById('background-layer').style.display = 'flex'; }
-            if(state === 'state-ar') { document.getElementById('background-layer').style.display = 'none'; }
-        });
-        renderGo();
     </script>
 </body>
 </html>
