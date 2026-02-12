@@ -23,6 +23,8 @@
         .btn-video { border-color: #fff; background: #333; color: #fff; }
         .btn-damage { border-color: #ff0055; color: #ff0055; }
         .btn-heal { border-color: #00ff88; color: #00ff88; }
+        .btn-ar { border-color: #ffaa00; color: #ffaa00; }
+        
         .full-width { grid-column: span 2; }
         #status { font-size: 0.8rem; color: #666; margin-top: 20px; font-family: monospace; }
     </style>
@@ -35,13 +37,13 @@
         <button class="btn-action" onclick="sendCommand(0, 'morph_go')">⬅️ 1. GO Brett</button>
         <button class="btn-action" onclick="sendCommand(1, 'morph_qr')">✨ 2. Activate QR</button>
         
-        <button class="btn-damage" onclick="sendCommand(null, 'damage')">⚡ Damage</button>
-        <button class="btn-heal" onclick="sendCommand(null, 'heal')">❤️ Heal</button>
+        <button class="btn-damage" onclick="sendCommand(null, 'damage')">⚡ ADD DAMAGE</button>
+        <button class="btn-heal" onclick="sendCommand(null, 'heal')">❤️ REPAIR ALL</button>
         
-        <button class="btn-video full-width" onclick="sendVideoCommand('play')">🎥 3. SYNC START VIDEO</button>
+        <button class="btn-video full-width" onclick="sendVideoCommand('play')">🎥 3. VIDEO START (SYNC)</button>
         <button class="btn-video full-width" onclick="sendVideoCommand('stop')">⏹️ STOP VIDEO</button>
         
-        <button class="btn-video full-width" onclick="sendCommand(3, null)">🤖 4. AR Object</button>
+        <button class="btn-ar full-width" onclick="sendCommand(3, 'ar_mode')">🤖 4. AR OBJECT</button>
     </div>
 
     <div id="status">Ready</div>
@@ -61,13 +63,11 @@
         }
 
         function sendVideoCommand(state) {
-            // Wir setzen den Startzeitpunkt auf JETZT + 2000ms (2 Sekunden Puffer)
-            // Das gibt allen Geräten Zeit, das Signal zu empfangen, bevor es losgeht.
+            // Future Timestamp + 2 Sekunden Puffer für perfekten Sync
             const futureTime = Date.now() + 2000;
-            
             const payload = { 
                 action: 'video_sync', 
-                videoState: state, // 'play' oder 'stop'
+                videoState: state, 
                 startTime: futureTime 
             };
             publish(payload);
@@ -75,10 +75,14 @@
 
         function publish(payload) {
             const statusEl = document.getElementById('status');
-            statusEl.innerText = "Sending...";
+            statusEl.innerText = "Sending " + (payload.action || "Slide") + "...";
             pubnub.publish({ channel: channelName, message: payload }, (status) => {
-                if (status.error) { statusEl.innerText = "Error"; statusEl.style.color = "red"; }
-                else { statusEl.innerText = "Sent"; statusEl.style.color = "#00ff88"; setTimeout(() => { statusEl.innerText = "Ready"; statusEl.style.color = "#666"; }, 1000); }
+                if (status.error) { 
+                    statusEl.innerText = "Error"; statusEl.style.color = "red"; 
+                } else { 
+                    statusEl.innerText = "Sent"; statusEl.style.color = "#00ff88"; 
+                    setTimeout(() => { statusEl.innerText = "Ready"; statusEl.style.color = "#666"; }, 1000); 
+                }
             });
         }
     </script>
