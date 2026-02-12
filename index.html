@@ -16,7 +16,6 @@
             --damage-red: #ff0055; 
             --bg-deep: #050505; 
             --qr-dark: #111;
-            /* --qr-light entfernt, da wir jetzt alles blau machen */
         }
         body { background: var(--bg-deep); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
         
@@ -26,7 +25,6 @@
             z-index: 1; perspective: 1200px; 
         }
 
-        /* Grid auf 21x21 angepasst (Standard QR Code Version 1) */
         .morph-grid {
             display: grid;
             grid-template-columns: repeat(21, 1fr);
@@ -45,49 +43,34 @@
             background: #333;
         }
 
-        /* --- MODE: GO (Random Dots) --- */
+        /* MODES */
         .mode-go .cell { border-radius: 50%; opacity: 1; transform: scale(0.85); }
         .mode-go .cell.black { background: #111; box-shadow: inset 2px 2px 5px rgba(255,255,255,0.1); }
         .mode-go .cell.white { background: #eee; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
         .mode-go .cell.empty { opacity: 0.05; background: #fff; }
 
-        /* --- MODE: QR CODE (Sharp Edges) --- */
         .mode-qr .cell { transform: scale(1); border-radius: 0; opacity: 1; }
-        
-        /* Finder Patterns (Ecken) - Bleiben Blau */
         .mode-qr .cell.finder-outer { background: var(--neon-blue); box-shadow: 0 0 8px rgba(0, 242, 255, 0.6); }
         .mode-qr .cell.finder-inner { background: var(--qr-dark); } 
         .mode-qr .cell.finder-center { background: var(--neon-blue); box-shadow: 0 0 12px rgba(0, 242, 255, 0.9); }
         
-        /* --- HIER SIND DIE ÄNDERUNGEN FÜR "ALLES BLAU" --- 
-           Wir nutzen jetzt var(--neon-blue) für Sync, Version und Data
-        */
-
-        /* Timing Patterns (Linien) */
         .mode-qr .cell.is-sync.bit-1 { background: var(--neon-blue); box-shadow: 0 0 4px rgba(0, 242, 255, 0.4); }
         .mode-qr .cell.is-sync.bit-0 { background: var(--qr-dark); }
-        
-        /* Version Information */
         .mode-qr .cell.is-version.bit-1 { background: var(--neon-blue); box-shadow: 0 0 4px rgba(0, 242, 255, 0.4); }
         .mode-qr .cell.is-version.bit-0 { background: var(--qr-dark); }
-        
-        /* Data Payload */
         .mode-qr .cell.is-data.bit-1 { background: var(--neon-blue); box-shadow: 0 0 5px rgba(0, 242, 255, 0.3); }
         .mode-qr .cell.is-data.bit-0 { background: var(--qr-dark); }
 
-        /* --- HIGHLIGHT MODES (Bleiben farbig für den Kontrast beim Erklären) --- */
+        /* Highlight Modes */
         .highlight-finders .cell:not(.finder-outer):not(.finder-inner):not(.finder-center) { opacity: 0.05; transform: scale(0.5); }
         .highlight-finders .cell.finder-outer, .highlight-finders .cell.finder-center { transform: scale(1.1); z-index: 10; }
 
         .highlight-sync .cell:not(.is-sync) { opacity: 0.05; transform: scale(0.5); }
-        /* Sync wird GRÜN wenn spezifisch gehighlighted */
         .highlight-sync .cell.is-sync { opacity: 1; background: var(--matrix-green) !important; box-shadow: 0 0 15px var(--matrix-green) !important; transform: scale(1.2); z-index: 10; border-radius: 50%; }
 
         .highlight-version .cell:not(.is-version) { opacity: 0.05; transform: scale(0.5); }
-        /* Version wird LILA wenn spezifisch gehighlighted */
         .highlight-version .cell.is-version.bit-1 { opacity: 1; background: var(--neon-purple) !important; box-shadow: 0 0 15px var(--neon-purple) !important; transform: scale(0.9); z-index: 10; }
 
-        /* Damage/Heal */
         .cell.damaged { background: var(--damage-red) !important; box-shadow: 0 0 15px var(--damage-red) !important; opacity: 1 !important; z-index: 20; animation: glitch 0.2s infinite; }
         
         @keyframes glitch {
@@ -108,8 +91,36 @@
         #video-container.active { opacity: 1; pointer-events: all; }
         video { width: 100%; height: 100%; object-fit: cover; }
         
-        #ar-viewer-container { width: 100%; height: 80vh; background: #222; border-radius: 20px; overflow: hidden; position: relative; }
+        /* --- AR Anpassungen --- */
+        #ar-viewer-container { 
+            width: 95vw;    /* Breiter */
+            height: 90vh;   /* Höher, damit man mehr sieht */
+            background: rgba(34, 34, 34, 0.4); /* Transparenz, damit man QR evtl. noch erahnt */
+            border-radius: 20px; 
+            overflow: hidden; 
+            position: relative; 
+            margin: 0 auto;
+            border: 1px solid var(--neon-blue);
+        }
         model-viewer { width: 100%; height: 100%; }
+
+        /* Custom AR Button Styling */
+        .ar-button {
+            background-color: var(--neon-blue);
+            border-radius: 4px;
+            border: none;
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            font-family: 'Courier New', monospace;
+            font-weight: bold;
+            font-size: 16px;
+            color: #000;
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.5);
+            cursor: pointer;
+            z-index: 1000;
+        }
         
         #btn-start { 
             position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
@@ -142,7 +153,18 @@
         <section data-state="state-qr"></section>
         <section data-state="state-ar">
             <div id="ar-viewer-container">
-                <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar camera-controls auto-rotate shadow-intensity="1"></model-viewer>
+                <model-viewer 
+                    src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
+                    ar 
+                    ar-modes="webxr scene-viewer quick-look" 
+                    camera-controls 
+                    auto-rotate 
+                    shadow-intensity="1">
+                    
+                    <button slot="ar-button" class="ar-button">
+                        AR KAMERA STARTEN
+                    </button>
+                </model-viewer>
             </div>
         </section>
     </div></div>
@@ -157,6 +179,16 @@
         const cells = [];
         const gridSize = 21; 
         const debugEl = document.getElementById('sync-debug');
+        const video = document.getElementById('main-video');
+        const container = document.getElementById('video-container');
+
+        // --- Globale Status-Variablen für Sync ---
+        let globalVideoState = {
+            startTime: 0,      // Der absolute Startzeitpunkt (Serverzeit)
+            isPlaying: false,
+            syncLoopActive: false
+        };
+        let timeOffset = 0;
 
         // Init Grid
         for(let i=0; i<gridSize*gridSize; i++) {
@@ -182,7 +214,6 @@
             });
         }
 
-        // --- QR Code Logic ---
         function identifyCellType(x, y) {
             const isTopLeft = x <= 6 && y <= 6;
             const isTopRight = x >= 14 && y <= 6;
@@ -228,23 +259,81 @@
             if(highlightMode) grid.classList.add(highlightMode);
         }
 
+        // --- Der "Apple-Safe" Sync Loop (Integriert) ---
+        function syncLoop() {
+            if (!globalVideoState.isPlaying) return;
+
+            // 1. Wo sollten wir sein?
+            const nowServer = Date.now() + timeOffset;
+            const expectedTime = (nowServer - globalVideoState.startTime) / 1000;
+
+            // 2. Berechnung des Drifts
+            const drift = expectedTime - video.currentTime;
+            
+            // Debug Anzeige update
+            debugEl.innerText = `Drift: ${drift.toFixed(3)}s | Rate: ${video.playbackRate.toFixed(2)}`;
+
+            // 3. Entscheidung (Smoothed PID Control)
+            
+            // ZONE A: Perfektion (Drift < 40ms)
+            if (Math.abs(drift) < 0.04) {
+                if (video.playbackRate !== 1.0) video.playbackRate = 1.0;
+            }
+            // ZONE B: Micro-Adjustments
+            else if (Math.abs(drift) <= 1.0) {
+                let newRate = 1.0 + (drift * 0.15); 
+                newRate = Math.min(Math.max(newRate, 0.95), 1.05);
+                
+                if (Math.abs(video.playbackRate - newRate) > 0.01) {
+                    video.playbackRate = newRate;
+                }
+            }
+            // ZONE C: Panic Mode (Drift > 1 Sekunde)
+            else {
+                console.log("Hard Sync trigger due to drift:", drift);
+                video.currentTime = expectedTime;
+                video.playbackRate = 1.0;
+            }
+
+            requestAnimationFrame(syncLoop);
+        }
+
         function initSystem() {
             document.getElementById('btn-start').style.display = 'none';
-            const videoPlayer = document.getElementById('main-video');
             
-            videoPlayer.muted = false;
-            videoPlayer.play().then(() => {
-                videoPlayer.pause();
-                videoPlayer.currentTime = 0;
+            // Unlock Audio Context
+            video.muted = false;
+            video.play().then(() => {
+                video.pause();
+                video.currentTime = 0;
                 debugEl.innerText = "Audio Unlocked";
             }).catch(e => {
                 console.warn("Autoplay strict mode", e);
-                videoPlayer.muted = true; 
+                video.muted = true; 
                 debugEl.innerText = "Audio Muted Fallback";
             });
 
             const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v15-viewer-" + Math.floor(Math.random()*1000) });
             
+            // --- Time Offset Kalibrierung ---
+            async function syncServerTime() {
+                const start = Date.now();
+                return new Promise((resolve) => {
+                    pubnub.time((status, response) => {
+                        if (!status.error) {
+                            const end = Date.now();
+                            const latency = (end - start) / 2;
+                            const serverTimeMs = response.timetoken / 10000;
+                            timeOffset = serverTimeMs - (Date.now()) + latency; 
+                            console.log("Time Offset calibrated:", timeOffset, "ms latency:", latency);
+                            resolve();
+                        }
+                    });
+                });
+            }
+            // Sofort kalibrieren
+            syncServerTime();
+
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
@@ -265,31 +354,43 @@
                         renderQRStructure();
                     }
                     
-                    if(msg.action === 'video_sync') {
-                        const container = document.getElementById('video-container');
-                        
-                        if(msg.videoState === 'play') {
+                    // --- NEUE SYNC FUNKTION (INTEGRIERT) ---
+                    if (msg.action === 'video_sync') {
+                        if (msg.videoState === 'play') {
+                            globalVideoState.startTime = msg.startTime;
+                            globalVideoState.isPlaying = true;
+                            
                             container.classList.add('active');
-                            let targetTime = ((Date.now() - msg.startTime) / 1000) + 0.1; 
-                            if (targetTime < 0) targetTime = 0;
+                            document.body.classList.add('video-active');
 
-                            let drift = Math.abs(videoPlayer.currentTime - targetTime);
-                            debugEl.innerText = `Sync Drift: ${drift.toFixed(2)}s`;
-
-                            if (drift > 0.6 || videoPlayer.paused) {
-                                videoPlayer.currentTime = targetTime;
-                                debugEl.innerText += " (HARD SYNC)";
-                            }
-
-                            if(videoPlayer.paused) {
-                                videoPlayer.play().catch(e => {
-                                    videoPlayer.muted = true;
-                                    videoPlayer.play();
+                            if (video.paused) {
+                                video.play().catch(() => {
+                                    video.muted = true;
+                                    video.play();
                                 });
+                                
+                                // Initial-Jump
+                                const nowServer = Date.now() + timeOffset;
+                                const targetPos = (nowServer - globalVideoState.startTime) / 1000;
+                                if (targetPos > 0 && Math.abs(video.currentTime - targetPos) > 1) {
+                                    video.currentTime = targetPos;
+                                }
                             }
+
+                            if (!globalVideoState.syncLoopActive) {
+                                globalVideoState.syncLoopActive = true;
+                                requestAnimationFrame(syncLoop);
+                            }
+
                         } else {
+                            // Stop Logic
+                            globalVideoState.isPlaying = false;
+                            globalVideoState.syncLoopActive = false;
+                            
                             container.classList.remove('active');
-                            videoPlayer.pause();
+                            document.body.classList.remove('video-active');
+                            video.pause();
+                            video.playbackRate = 1.0;
                         }
                     }
                 }
