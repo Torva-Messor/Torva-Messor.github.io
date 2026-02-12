@@ -13,7 +13,7 @@
             --neon-blue: #00f2ff; 
             --neon-purple: #bc13fe; 
             --matrix-green: #00ff41; 
-            --damage-red: #ff0055; /* Umbenannt für Klarheit */
+            --damage-red: #ff0055; 
             --bg-deep: #050505; 
         }
         body { background: var(--bg-deep); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
@@ -48,76 +48,57 @@
         .mode-go .cell.empty { opacity: 0.05; background: #fff; }
 
         /* --- QR STRUCTURE HIGHLIGHTS --- */
-        
-        /* Basis für alle QR Zellen */
         .mode-qr .cell { transform: scale(0.95); border-radius: 0; }
-
-        /* 1. FINDER PATTERNS (Position) - Blau */
         .cell.is-finder { background: var(--neon-blue); }
-        .highlight-finders .cell.is-finder { 
-            opacity: 1; 
-            box-shadow: 0 0 20px var(--neon-blue); 
-            z-index: 10;
-        }
-
-        /* 2. SYNC / TIMING PATTERNS - Grün */
+        .highlight-finders .cell.is-finder { opacity: 1; box-shadow: 0 0 20px var(--neon-blue); z-index: 10; }
         .cell.is-sync { background: var(--matrix-green); border-radius: 50%; }
-        .highlight-sync .cell.is-sync { 
-            opacity: 1; 
-            box-shadow: 0 0 15px var(--matrix-green); 
-            transform: scale(0.6);
-        }
-
-        /* 3. VERSION DATA - Lila */
+        .highlight-sync .cell.is-sync { opacity: 1; box-shadow: 0 0 15px var(--matrix-green); transform: scale(0.6); }
         .cell.is-version { background: var(--neon-purple); }
-        .highlight-version .cell.is-version { 
-            opacity: 1; 
-            box-shadow: 0 0 15px var(--neon-purple); 
-            transform: scale(0.8) rotate(45deg);
-        }
-
-        /* 4. DATA & BITS (Das hier wurde geändert) */
-        .cell.is-data { background: #eee; opacity: 0.8; } /* Inaktive Hintergrundzellen (weiß/grau) */
+        .highlight-version .cell.is-version { opacity: 1; box-shadow: 0 0 15px var(--neon-purple); transform: scale(0.8) rotate(45deg); }
         
-        /* Aktive Bits (die eigentlichen Datenpunkte) werden wieder Neon-Blau */
-        .cell.bit-1 { 
-            background: var(--neon-blue) !important; 
-            box-shadow: 0 0 5px var(--neon-blue) !important;
-            opacity: 1 !important;
-        }
+        .cell.is-data { background: #eee; opacity: 0.8; }
+        .cell.bit-1 { background: var(--neon-blue) !important; box-shadow: 0 0 5px var(--neon-blue) !important; opacity: 1 !important; }
 
-        /* Full Mode Resets für saubere Darstellung */
         .highlight-full .cell { opacity: 1; }
         .highlight-full .cell.is-sync:not(.bit-1) { background: #eee; transform: scale(0.95); border-radius: 0; }
         .highlight-full .cell.is-version:not(.bit-1) { background: #eee; transform: scale(0.95); rotate: 0deg; }
 
-
-        /* Dimming Logic */
         .cell.dimmed { opacity: 0.05 !important; transform: scale(0.5) !important; box-shadow: none !important; }
-
-        /* --- DAMAGE (Das hier wurde geändert) --- */
-        .cell.damaged { 
-            background: var(--damage-red) !important; 
-            box-shadow: 0 0 15px var(--damage-red) !important; 
-            opacity: 1 !important; 
-            z-index: 20;
-            /* Animation entfernt, jetzt statisch */
-        }
-        /* @keyframes glitch entfernt */
-
+        .cell.damaged { background: var(--damage-red) !important; box-shadow: 0 0 15px var(--damage-red) !important; opacity: 1 !important; z-index: 20; }
 
         /* Video & AR */
-        #video-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; background: black; opacity: 0; pointer-events: none; transition: opacity 0.5s; display: flex; justify-content: center; align-items: center; }
+        #video-container { 
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; 
+            background: black; opacity: 0; pointer-events: none; 
+            transition: opacity 0.5s; display: flex; justify-content: center; align-items: center; 
+        }
         #video-container.active { opacity: 1; pointer-events: all; }
+        
+        /* WICHTIG: muted attribute hilft bei Autoplay Problemen */
         video { width: 100%; height: 100%; object-fit: cover; }
+        
         #ar-viewer-container { width: 100%; height: 80vh; background: #222; border-radius: 20px; overflow: hidden; position: relative; }
         model-viewer { width: 100%; height: 100%; }
-        #btn-start { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 2px solid var(--neon-blue); color: var(--neon-blue); background: rgba(0,0,0,0.9); padding: 20px 40px; font-size: 1.5rem; cursor: pointer; z-index: 100; font-family: sans-serif; text-transform: uppercase; letter-spacing: 3px; }
+        
+        #btn-start { 
+            position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); 
+            border: 2px solid var(--neon-blue); color: var(--neon-blue); 
+            background: rgba(0,0,0,0.9); padding: 20px 40px; font-size: 1.5rem; 
+            cursor: pointer; z-index: 100; font-family: sans-serif; 
+            text-transform: uppercase; letter-spacing: 3px; 
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.3);
+        }
     </style>
 </head>
 <body>
     <button id="btn-start" onclick="initSystem()">Initialize System</button>
-    <div id="video-container"><video id="main-video" playsinline><source src="qr-code-pubnub-torva-project.mp4" type="video/mp4"></video></div>
+    
+    <div id="video-container">
+        <video id="main-video" playsinline preload="auto">
+            <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
+        </video>
+    </div>
+    
     <div id="background-layer"><div id="grid" class="morph-grid mode-go"></div></div>
 
     <div class="reveal"><div class="slides">
@@ -186,12 +167,8 @@
                     const y = Math.floor(i / gridSize);
                     const type = identifyCellType(x, y);
                     c.classList.add(type);
-
-                    // Zufällige Bits generieren
                     if (type === 'is-data' || type === 'is-version' || type === 'is-sync') {
-                        if (Math.random() > 0.5) {
-                            c.classList.add('bit-1'); // Wird jetzt blau im CSS
-                        }
+                        if (Math.random() > 0.5) c.classList.add('bit-1');
                     }
                 });
             }
@@ -200,7 +177,6 @@
 
             cells.forEach(c => {
                 c.classList.remove('dimmed');
-                
                 if (highlightMode !== 'highlight-full') {
                     if (highlightMode === 'highlight-finders' && !c.classList.contains('is-finder')) c.classList.add('dimmed');
                     if (highlightMode === 'highlight-sync' && !c.classList.contains('is-sync')) c.classList.add('dimmed');
@@ -213,7 +189,19 @@
             document.getElementById('btn-start').style.display = 'none';
             const videoPlayer = document.getElementById('main-video');
             
-            const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v15-viewer" });
+            // --- VIDEO UNLOCK FIX ---
+            // Wir "starten" das Video lautlos und pausieren sofort. 
+            // Das sagt dem Browser (iOS/Android): "Der User hat das Video erlaubt".
+            videoPlayer.muted = true;
+            videoPlayer.play().then(() => {
+                videoPlayer.pause();
+                videoPlayer.currentTime = 0;
+                // Jetzt Mute entfernen, damit es später mit Ton läuft (optional)
+                videoPlayer.muted = false; 
+            }).catch(e => console.log("Video Unlock Error (Browser Policy):", e));
+            // ------------------------
+
+            const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v15-viewer-" + Math.floor(Math.random()*1000) });
             
             pubnub.addListener({
                 message: (m) => {
@@ -221,14 +209,12 @@
                     if(msg.slide !== undefined) deck.slide(msg.slide);
                     
                     if(msg.action === 'morph_go') renderGo();
-                    
                     if(msg.action === 'highlight_finders') renderQRStructure('highlight-finders');
                     if(msg.action === 'highlight_sync') renderQRStructure('highlight-sync');
                     if(msg.action === 'highlight_version') renderQRStructure('highlight-version');
                     if(msg.action === 'morph_qr') renderQRStructure('highlight-full'); 
 
                     if(msg.action === 'damage') {
-                        // Wir beschädigen nur blaue Zellen (bit-1) für besseren Effekt
                         let dataCells = cells.filter(c => c.classList.contains('bit-1'));
                         for(let i=0; i<20; i++) { 
                             if(dataCells.length > 0) {
@@ -242,12 +228,34 @@
                         renderQRStructure('highlight-full');
                     }
                     
+                    // --- SYNCHRONISATION FIX ---
                     if(msg.action === 'video_sync') {
                         const container = document.getElementById('video-container');
+                        
                         if(msg.videoState === 'play') {
                             container.classList.add('active');
-                            videoPlayer.currentTime = (Date.now() - msg.startTime) / 1000;
-                            videoPlayer.play();
+                            
+                            // Berechne Zielzeit basierend auf Server-Timestamp
+                            // HINWEIS: Geräteuhren müssen halbwegs stimmen (+/- ein paar Sek)
+                            let targetTime = (Date.now() - msg.startTime) / 1000;
+                            if (targetTime < 0) targetTime = 0;
+
+                            // Nur springen (seek), wenn die Abweichung zu groß ist (> 0.5s),
+                            // um Stottern bei kleinen Netzwerkschwankungen zu vermeiden.
+                            if (Math.abs(videoPlayer.currentTime - targetTime) > 0.5) {
+                                videoPlayer.currentTime = targetTime;
+                            }
+
+                            // Promise handling für play(), um Fehler abzufangen
+                            let playPromise = videoPlayer.play();
+                            if (playPromise !== undefined) {
+                                playPromise.catch(error => {
+                                    console.error("Auto-Play prevented by browser:", error);
+                                    // Fallback: Muted abspielen, falls Sound das Problem ist
+                                    videoPlayer.muted = true;
+                                    videoPlayer.play();
+                                });
+                            }
                         } else {
                             container.classList.remove('active');
                             videoPlayer.pause();
