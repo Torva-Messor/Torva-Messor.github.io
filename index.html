@@ -13,9 +13,8 @@
             --neon-blue: #00f2ff; 
             --neon-purple: #bc13fe; 
             --matrix-green: #00ff41; 
-            --damage-red: #ff0055; 
+            --damage-red: #ff0055; /* Umbenannt für Klarheit */
             --bg-deep: #050505; 
-            --finder-white: #eeeeee; /* Neue Variable für die Ecken */
         }
         body { background: var(--bg-deep); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
         
@@ -48,29 +47,20 @@
         .mode-go .cell.white { background: #eee; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
         .mode-go .cell.empty { opacity: 0.05; background: #fff; }
 
-        /* --- QR STRUCTURE --- */
+        /* --- QR STRUCTURE HIGHLIGHTS --- */
+        
+        /* Basis für alle QR Zellen */
         .mode-qr .cell { transform: scale(0.95); border-radius: 0; }
 
-        /* 1. FINDER PATTERNS (Ecken) - ÄNDERUNG HIER */
-        /* Standardmäßig weiß/grau, nicht blau */
-        .cell.is-finder { background: var(--finder-white); }
-        
-        /* Nur blau leuchten, wenn spezifisch highlight-finders aktiv ist */
+        /* 1. FINDER PATTERNS (Position) - Blau */
+        .cell.is-finder { background: var(--neon-blue); }
         .highlight-finders .cell.is-finder { 
-            background: var(--neon-blue);
             opacity: 1; 
             box-shadow: 0 0 20px var(--neon-blue); 
             z-index: 10;
         }
 
-        /* Im Full Mode: Ecken sichtbar, aber neutral (weiß) */
-        .highlight-full .cell.is-finder {
-            opacity: 1;
-            background: var(--finder-white);
-            box-shadow: 0 0 10px rgba(255,255,255,0.2);
-        }
-
-        /* 2. SYNC / TIMING PATTERNS */
+        /* 2. SYNC / TIMING PATTERNS - Grün */
         .cell.is-sync { background: var(--matrix-green); border-radius: 50%; }
         .highlight-sync .cell.is-sync { 
             opacity: 1; 
@@ -78,7 +68,7 @@
             transform: scale(0.6);
         }
 
-        /* 3. VERSION DATA */
+        /* 3. VERSION DATA - Lila */
         .cell.is-version { background: var(--neon-purple); }
         .highlight-version .cell.is-version { 
             opacity: 1; 
@@ -86,46 +76,42 @@
             transform: scale(0.8) rotate(45deg);
         }
 
-        /* 4. DATA & BITS */
-        .cell.is-data { background: #eee; opacity: 0.8; } 
+        /* 4. DATA & BITS (Das hier wurde geändert) */
+        .cell.is-data { background: #eee; opacity: 0.8; } /* Inaktive Hintergrundzellen (weiß/grau) */
         
-        /* Aktive Bits (die eigentlichen Datenpunkte) */
+        /* Aktive Bits (die eigentlichen Datenpunkte) werden wieder Neon-Blau */
         .cell.bit-1 { 
             background: var(--neon-blue) !important; 
             box-shadow: 0 0 5px var(--neon-blue) !important;
             opacity: 1 !important;
         }
 
-        /* Full Mode Resets */
+        /* Full Mode Resets für saubere Darstellung */
         .highlight-full .cell { opacity: 1; }
         .highlight-full .cell.is-sync:not(.bit-1) { background: #eee; transform: scale(0.95); border-radius: 0; }
         .highlight-full .cell.is-version:not(.bit-1) { background: #eee; transform: scale(0.95); rotate: 0deg; }
 
+
         /* Dimming Logic */
         .cell.dimmed { opacity: 0.05 !important; transform: scale(0.5) !important; box-shadow: none !important; }
 
-        /* --- DAMAGE --- */
+        /* --- DAMAGE (Das hier wurde geändert) --- */
         .cell.damaged { 
             background: var(--damage-red) !important; 
             box-shadow: 0 0 15px var(--damage-red) !important; 
             opacity: 1 !important; 
             z-index: 20;
+            /* Animation entfernt, jetzt statisch */
         }
+        /* @keyframes glitch entfernt */
+
 
         /* Video & AR */
         #video-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; background: black; opacity: 0; pointer-events: none; transition: opacity 0.5s; display: flex; justify-content: center; align-items: center; }
         #video-container.active { opacity: 1; pointer-events: all; }
         video { width: 100%; height: 100%; object-fit: cover; }
-        
-        #ar-viewer-container { 
-            width: 100%; height: 80vh; 
-            background: transparent; 
-            border-radius: 20px; 
-            position: relative; 
-            margin-top: 5vh;
-        }
-        model-viewer { width: 100%; height: 100%; background-color: #222; border-radius: 20px;}
-        
+        #ar-viewer-container { width: 100%; height: 80vh; background: #222; border-radius: 20px; overflow: hidden; position: relative; }
+        model-viewer { width: 100%; height: 100%; }
         #btn-start { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 2px solid var(--neon-blue); color: var(--neon-blue); background: rgba(0,0,0,0.9); padding: 20px 40px; font-size: 1.5rem; cursor: pointer; z-index: 100; font-family: sans-serif; text-transform: uppercase; letter-spacing: 3px; }
     </style>
 </head>
@@ -139,14 +125,7 @@
         <section data-state="state-qr"></section>
         <section data-state="state-ar">
             <div id="ar-viewer-container">
-                <model-viewer 
-                    src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
-                    ar 
-                    ar-modes="webxr scene-viewer quick-look" 
-                    camera-controls 
-                    auto-rotate 
-                    shadow-intensity="1">
-                </model-viewer>
+                <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar camera-controls auto-rotate shadow-intensity="1"></model-viewer>
             </div>
         </section>
     </div></div>
@@ -155,13 +134,7 @@
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
     <script>
         const deck = new Reveal();
-        deck.initialize({ 
-            controls: false, 
-            progress: false, 
-            hash: false, 
-            transition: 'fade',
-            disableLayout: true // Hilft oft bei AR/Canvas Elementen
-        });
+        deck.initialize({ controls: false, progress: false, hash: false, transition: 'fade' });
         
         const grid = document.getElementById('grid');
         const cells = [];
@@ -203,7 +176,6 @@
         }
 
         function renderQRStructure(highlightMode) {
-            // Alte Highlight Klassen entfernen
             grid.classList.remove('highlight-finders', 'highlight-sync', 'highlight-version', 'highlight-full');
             
             if(!grid.classList.contains('mode-qr')) {
@@ -215,10 +187,10 @@
                     const type = identifyCellType(x, y);
                     c.classList.add(type);
 
-                    // Zufällige Bits generieren (Finder explizit ausschließen)
+                    // Zufällige Bits generieren
                     if (type === 'is-data' || type === 'is-version' || type === 'is-sync') {
                         if (Math.random() > 0.5) {
-                            c.classList.add('bit-1'); 
+                            c.classList.add('bit-1'); // Wird jetzt blau im CSS
                         }
                     }
                 });
@@ -246,19 +218,9 @@
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
-                    
-                    // --- NEU: Expliziter AR Handler ---
-                    if(msg.action === 'enter_ar') {
-                        deck.slide(2); // Springt zur 3. Slide (Index 2)
-                        grid.style.opacity = '0'; // Grid ausblenden für AR Fokus
-                    }
-
                     if(msg.slide !== undefined) deck.slide(msg.slide);
                     
-                    if(msg.action === 'morph_go') {
-                        grid.style.opacity = '1';
-                        renderGo();
-                    }
+                    if(msg.action === 'morph_go') renderGo();
                     
                     if(msg.action === 'highlight_finders') renderQRStructure('highlight-finders');
                     if(msg.action === 'highlight_sync') renderQRStructure('highlight-sync');
@@ -266,6 +228,7 @@
                     if(msg.action === 'morph_qr') renderQRStructure('highlight-full'); 
 
                     if(msg.action === 'damage') {
+                        // Wir beschädigen nur blaue Zellen (bit-1) für besseren Effekt
                         let dataCells = cells.filter(c => c.classList.contains('bit-1'));
                         for(let i=0; i<20; i++) { 
                             if(dataCells.length > 0) {
