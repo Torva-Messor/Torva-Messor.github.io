@@ -147,10 +147,14 @@
             cursor: pointer; font-family: 'Courier New', monospace; 
             text-transform: uppercase; letter-spacing: 2px; border-radius: 4px;
             box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+            /* WICHTIG: Display Block, damit er da ist, wenn AR verfügbar */
+            display: block; 
             white-space: nowrap;
-            /* display: block; <-- ENTFERNT, damit model-viewer es steuert */
         }
         #ar-button:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 40px var(--neon-blue); }
+
+        /* Wenn AR nicht supported ist, versteckt Model-Viewer den Button automatisch.
+           Wir können aber fallback erzwingen wenn nötig, aber standard ist sicherer. */
 
         /* Video / UI */
         #video-container { 
@@ -192,13 +196,11 @@
             src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
             ar 
             ar-modes="webxr scene-viewer quick-look" 
-            ar-scale="auto"
-            ar-placement="floor"
             camera-controls 
             auto-rotate 
             shadow-intensity="1">
             
-            <button slot="ar-button" id="ar-button" onclick="this.parentElement.activateAR()">
+            <button slot="ar-button" id="ar-button">
                 ENTER AR REALITY
             </button>
         </model-viewer>
