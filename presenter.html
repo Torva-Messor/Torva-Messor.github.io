@@ -3,87 +3,91 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Torva Presenter</title>
+    <title>Torva Presenter PRO - V2</title>
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
     <style>
-        body { font-family: 'Inter', sans-serif; background: #111; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px; margin: 0; }
-        h1 { color: #00f2ff; font-size: 1.5rem; margin-bottom: 30px; text-align: center; letter-spacing: 2px; }
-        
-        .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; width: 100%; max-width: 400px; }
-        
+        body { font-family: 'Segoe UI', sans-serif; background: #0a0a0a; color: #fff; display: flex; flex-direction: column; align-items: center; padding: 20px; }
+        .group { width: 100%; max-width: 400px; margin-bottom: 20px; border: 1px solid #333; padding: 15px; border-radius: 12px; background: #111; }
+        .label { font-size: 0.75rem; color: #666; text-transform: uppercase; margin-bottom: 12px; display: block; letter-spacing: 1px; }
+        .button-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         button { 
-            background: #222; border: 1px solid #444; color: white; 
-            padding: 20px; border-radius: 10px; font-size: 1rem; 
-            cursor: pointer; transition: all 0.2s; touch-action: manipulation;
-            font-weight: bold;
+            background: #1a1a1a; border: 1px solid #333; color: #ccc; padding: 12px; 
+            border-radius: 6px; font-weight: 600; cursor: pointer; transition: all 0.2s;
+            font-size: 0.9rem;
         }
-        button:active { transform: scale(0.95); background: #333; }
+        button:active { transform: scale(0.98); }
+        .full { grid-column: span 2; }
         
-        .btn-action { border-color: #00f2ff; color: #00f2ff; }
-        .btn-video { border-color: #fff; background: #333; color: #fff; }
-        .btn-damage { border-color: #ff0055; color: #ff0055; }
-        .btn-heal { border-color: #00ff88; color: #00ff88; }
-        .btn-ar { border-color: #ffaa00; color: #ffaa00; }
-        
-        .full-width { grid-column: span 2; }
-        #status { font-size: 0.8rem; color: #666; margin-top: 20px; font-family: monospace; }
+        /* Color Coding */
+        .blue { border-color: #00f2ff; color: #00f2ff; background: rgba(0, 242, 255, 0.05); }
+        .purple { border-color: #bc13fe; color: #bc13fe; background: rgba(188, 19, 254, 0.05); }
+        .green { border-color: #00ff88; color: #00ff88; background: rgba(0, 255, 136, 0.05); }
+        .red { border-color: #ff0055; color: #ff0055; background: rgba(255, 0, 85, 0.05); }
+        .yellow { border-color: #ffaa00; color: #ffaa00; background: rgba(255, 170, 0, 0.05); }
+
+        #status { font-family: monospace; font-size: 0.8rem; margin-top: 10px; color: #555; }
     </style>
 </head>
 <body>
+    <h2 style="color: #fff; letter-spacing: 2px;">TORVA <span style="color:#00f2ff">CONTROL</span></h2>
 
-    <h1>TORVA CONTROL</h1>
-
-    <div class="button-grid">
-        <button class="btn-action" onclick="sendCommand(0, 'morph_go')">⬅️ 1. GO Brett</button>
-        <button class="btn-action" onclick="sendCommand(1, 'morph_qr')">✨ 2. Activate QR</button>
-        
-        <button class="btn-damage" onclick="sendCommand(null, 'damage')">⚡ ADD DAMAGE</button>
-        <button class="btn-heal" onclick="sendCommand(null, 'heal')">❤️ REPAIR ALL</button>
-        
-        <button class="btn-video full-width" onclick="sendVideoCommand('play')">🎥 3. VIDEO START (SYNC)</button>
-        <button class="btn-video full-width" onclick="sendVideoCommand('stop')">⏹️ STOP VIDEO</button>
-        
-        <button class="btn-ar full-width" onclick="sendCommand(3, 'ar_mode')">🤖 4. AR OBJECT</button>
+    <div class="group">
+        <span class="label">Phase 1: Grid Transformation</span>
+        <div class="button-grid">
+            <button class="blue full" onclick="sendCommand(0, 'morph_go')">RESET: GO Brett</button>
+        </div>
     </div>
 
-    <div id="status">Ready</div>
+    <div class="group">
+        <span class="label">Phase 2: Struktur-Analyse</span>
+        <div class="button-grid">
+            <button class="blue" onclick="sendCommand(1, 'highlight_finders')">1. Position (Finder)</button>
+            <button class="green" onclick="sendCommand(1, 'highlight_sync')">2. Sync (Timing)</button>
+            <button class="purple" onclick="sendCommand(1, 'highlight_version')">3. Version-Daten</button>
+            <button class="blue full" onclick="sendCommand(1, 'morph_qr')">4. Alle Daten (Full)</button>
+        </div>
+    </div>
+
+    <div class="group">
+        <span class="label">Phase 3: Interaktion</span>
+        <div class="button-grid">
+            <button class="red" onclick="sendCommand(null, 'damage')">Simulate Damage</button>
+            <button class="green" onclick="sendCommand(null, 'heal')">Repair System</button>
+        </div>
+    </div>
+
+    <div class="group">
+        <span class="label">Phase 4: Mixed Reality</span>
+        <div class="button-grid">
+            <button class="full" onclick="sendVideoCommand('play')">PLAY Video</button>
+            <button class="full" onclick="sendVideoCommand('stop')">STOP Video</button>
+            <button class="yellow full" onclick="sendCommand(2, 'ar_mode')">AR MODUS</button>
+        </div>
+    </div>
+
+    <div id="status">Bereit...</div>
 
     <script>
-        const publishKey = 'pub-c-f5b11d3c-ddfe-4dfc-963e-6fae738aeb03'; 
-        const subscribeKey = 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7';
-        const channelName = 'PrasiW.Woche';
+        const pubnub = new PubNub({ 
+            publishKey: 'pub-c-f5b11d3c-ddfe-4dfc-963e-6fae738aeb03', 
+            subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', 
+            userId: "controller" 
+        });
 
-        const pubnub = new PubNub({ publishKey, subscribeKey, userId: "presenter_mobile" });
-
-        function sendCommand(slideIndex, actionName) {
-            const payload = {};
-            if (slideIndex !== null) payload.slide = slideIndex;
-            if (actionName !== null) payload.action = actionName;
-            publish(payload);
+        function sendCommand(slide, action) {
+            let msg = { action };
+            if(slide !== null) msg.slide = slide;
+            
+            pubnub.publish({ channel: 'PrasiW.Woche', message: msg });
+            document.getElementById('status').innerText = "Action: " + action;
         }
 
         function sendVideoCommand(state) {
-            // Future Timestamp + 2 Sekunden Puffer für perfekten Sync
-            const futureTime = Date.now() + 2000;
-            const payload = { 
-                action: 'video_sync', 
-                videoState: state, 
-                startTime: futureTime 
-            };
-            publish(payload);
-        }
-
-        function publish(payload) {
-            const statusEl = document.getElementById('status');
-            statusEl.innerText = "Sending " + (payload.action || "Slide") + "...";
-            pubnub.publish({ channel: channelName, message: payload }, (status) => {
-                if (status.error) { 
-                    statusEl.innerText = "Error"; statusEl.style.color = "red"; 
-                } else { 
-                    statusEl.innerText = "Sent"; statusEl.style.color = "#00ff88"; 
-                    setTimeout(() => { statusEl.innerText = "Ready"; statusEl.style.color = "#666"; }, 1000); 
-                }
+            pubnub.publish({ 
+                channel: 'PrasiW.Woche', 
+                message: { action: 'video_sync', videoState: state, startTime: Date.now() } 
             });
+            document.getElementById('status').innerText = "Video: " + state;
         }
     </script>
 </body>
