@@ -201,6 +201,17 @@
         const gridSize = 21; 
         const debugEl = document.getElementById('sync-debug');
 
+        // --- NEW SYNC VARIABLES ---
+        let timeOffset = 0; // Differenz Server - Lokal
+        let videoPlayer = document.getElementById('main-video'); // Global ref
+        let videoContainer = document.getElementById('video-container'); // Global ref
+        
+        let globalVideoState = {
+            startTime: 0,
+            isPlaying: false,
+            syncLoopActive: false
+        };
+
         // Init Grid
         for(let i=0; i<gridSize*gridSize; i++) {
             let div = document.createElement('div');
@@ -228,9 +239,9 @@
                 grid.classList.add('mode-go');
                 cells.forEach(c => {
                     let r = Math.random();
-                    if(r > 0.8) c.classList.add('black'); // 20% Schwarz
-                    else if(r > 0.6) c.classList.add('white'); // 20% Weiß
-                    else c.classList.add('empty'); // 60% Leer
+                    if(r > 0.8) c.classList.add('black'); 
+                    else if(r > 0.6) c.classList.add('white'); 
+                    else c.classList.add('empty'); 
                 });
             });
         }
@@ -282,12 +293,64 @@
             }
         }
 
+        // --- TIME SYNC FUNCTION ---
+        async function syncServerTime(pubnubInstance) {
+            const start = Date.now();
+            return new Promise((resolve) => {
+                pubnubInstance.time((status, response) => {
+                    if (!status.error) {
+                        const end = Date.now();
+                        const latency = (end - start) / 2;
+                        const serverTimeMs = response.timetoken / 10000;
+                        timeOffset = serverTimeMs - Date.now() + latency;
+                        debugEl.innerText = `Time Synced. Offset: ${Math.round(timeOffset)}ms`;
+                        resolve();
+                    }
+                });
+            });
+        }
+
+        // --- OPTIMIZED SYNC LOOP (Apple Safe) ---
+        function syncLoop() {
+            if (!globalVideoState.isPlaying) return;
+
+            const nowServer = Date.now() + timeOffset;
+            const expectedTime = (nowServer - globalVideoState.startTime) / 1000;
+            const drift = expectedTime - videoPlayer.currentTime;
+
+            // Debug Feedback
+            // debugEl.innerText = `Drift: ${drift.toFixed(3)}s | Rate: ${videoPlayer.playbackRate.toFixed(2)}`;
+
+            // ZONE A: Perfekt (Drift < 40ms) -> Nichts tun
+            if (Math.abs(drift) < 0.04) {
+                if (videoPlayer.playbackRate !== 1.0) videoPlayer.playbackRate = 1.0;
+            }
+            // ZONE B: Sanfte Korrektur (Drift < 1s)
+            else if (Math.abs(drift) <= 1.0) {
+                let newRate = 1.0 + (drift * 0.15); // KP = 0.15
+                // Clamp für Apple (0.95 - 1.05)
+                newRate = Math.min(Math.max(newRate, 0.95), 1.05);
+                
+                if (Math.abs(videoPlayer.playbackRate - newRate) > 0.01) {
+                    videoPlayer.playbackRate = newRate;
+                }
+            }
+            // ZONE C: Panic Mode (Drift > 1s)
+            else {
+                // Nur springen, wenn nötig
+                videoPlayer.currentTime = expectedTime;
+                videoPlayer.playbackRate = 1.0;
+            }
+
+            requestAnimationFrame(syncLoop);
+        }
+
         function initSystem() {
             const btn = document.getElementById('btn-start');
             btn.style.opacity = '0';
             setTimeout(() => btn.style.display = 'none', 500);
 
-            const videoPlayer = document.getElementById('main-video');
+            // User Interaction Play/Pause hack
             videoPlayer.muted = false;
             videoPlayer.play().then(() => {
                 videoPlayer.pause();
@@ -295,11 +358,14 @@
                 debugEl.innerText = "System Online :: Audio Active";
             }).catch(e => {
                 videoPlayer.muted = true; 
-                debugEl.innerText = "System Online :: Audio Muted";
+                debugEl.innerText = "System Online :: Audio Muted (Autoplay Policy)";
             });
 
             const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v15-viewer-" + Math.floor(Math.random()*1000) });
             
+            // Sofort Zeit synchronisieren
+            syncServerTime(pubnub);
+
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
@@ -323,21 +389,41 @@
                         setTimeout(() => renderQRStructure(), 50);
                     }
                     
+                    // --- UPDATED SYNC LOGIC ---
                     if(msg.action === 'video_sync') {
-                        const container = document.getElementById('video-container');
                         if(msg.videoState === 'play') {
-                            container.classList.add('active');
+                            globalVideoState.startTime = msg.startTime;
+                            globalVideoState.isPlaying = true;
+                            
+                            videoContainer.classList.add('active');
                             document.body.classList.add('video-active');
                             
-                            let targetTime = ((Date.now() - msg.startTime) / 1000) + 0.1; 
-                            if (targetTime < 0) targetTime = 0;
-                            let drift = Math.abs(videoPlayer.currentTime - targetTime);
-                            if (drift > 0.6 || videoPlayer.paused) videoPlayer.currentTime = targetTime;
-                            if(videoPlayer.paused) videoPlayer.play().catch(e => { videoPlayer.muted = true; videoPlayer.play(); });
+                            if (videoPlayer.paused) {
+                                videoPlayer.play().catch(e => { 
+                                    videoPlayer.muted = true; 
+                                    videoPlayer.play(); 
+                                });
+                                // Initial Seek wenn sehr weit weg
+                                let nowSrv = Date.now() + timeOffset;
+                                let initialTgt = (nowSrv - msg.startTime) / 1000;
+                                if(initialTgt > 0 && Math.abs(videoPlayer.currentTime - initialTgt) > 1.5) {
+                                    videoPlayer.currentTime = initialTgt;
+                                }
+                            }
+
+                            if (!globalVideoState.syncLoopActive) {
+                                globalVideoState.syncLoopActive = true;
+                                requestAnimationFrame(syncLoop);
+                            }
                         } else {
-                            container.classList.remove('active');
+                            // Stop
+                            globalVideoState.isPlaying = false;
+                            globalVideoState.syncLoopActive = false;
+                            
+                            videoContainer.classList.remove('active');
                             document.body.classList.remove('video-active');
                             videoPlayer.pause();
+                            videoPlayer.playbackRate = 1.0;
                         }
                     }
                 }
