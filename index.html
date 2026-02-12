@@ -96,7 +96,7 @@
         /* --- AR Anpassungen: Fullscreen & Clean --- */
         #ar-viewer-container { 
             width: 100vw;   /* Komplette Breite */
-            height: 100vh;  /* Komplette Höhe */
+            height: 100dvh; /* HIER GEÄNDERT: Dynamische Höhe für Mobile */
             background: #000; /* Solides Schwarz, verdeckt alles dahinter */
             margin: 0;
             padding: 0;
@@ -113,7 +113,7 @@
             border-radius: 4px;
             border: none;
             position: absolute;
-            bottom: 30px;
+            bottom: max(60px, calc(env(safe-area-inset-bottom) + 30px)); /* HIER GEÄNDERT: Safe Area Beachtung */
             right: 30px;
             padding: 15px 30px;
             font-family: 'Courier New', monospace;
