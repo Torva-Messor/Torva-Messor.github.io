@@ -114,7 +114,7 @@
     <button id="btn-start" onclick="initSystem()">INITIALIZE SYSTEM</button>
 
     <div id="video-container">
-        <video id="main-video" playsinline preload="auto">
+        <video id="main-video" playsinline webkit-playsinline muted preload="auto">
             <source src="qr-code-pubnub-torva-project.mp4" type="video/mp4">
         </video>
     </div>
@@ -241,6 +241,8 @@
         function initSystem() {
             const btn = document.getElementById('btn-start');
             btn.innerHTML = "SYNCING...";
+            
+            // iOS Hack: Video kurz stumm abspielen und pausieren
             videoPlayer.play().then(() => {
                 videoPlayer.pause();
                 videoPlayer.currentTime = 0;
@@ -258,6 +260,8 @@
                         if(msg.action === 'morph_qr') renderQR();
                         if(msg.action === 'damage') applyDamage();
                         if(msg.action === 'heal') resetDamage();
+                        
+                        // HIER: Neue Video Logik
                         if(msg.action === 'video_sync') handleVideoSync(msg);
                     }
                 });
@@ -266,6 +270,7 @@
             }, 500);
         }
 
+        // --- NEUE HIER: SYNC LOGIK FÜR PARALLELE WIEDERGABE ---
         function handleVideoSync(data) {
             if (data.videoState === 'stop') {
                 videoContainer.classList.remove('active');
@@ -273,13 +278,13 @@
                 videoPlayer.currentTime = 0;
             } else if (data.videoState === 'play') {
                 videoContainer.classList.add('active');
-                const delay = data.startTime - Date.now();
-                if (delay > 0) {
-                    setTimeout(() => { videoPlayer.currentTime = 0; videoPlayer.play(); }, delay);
-                } else {
-                    videoPlayer.currentTime = Math.abs(delay) / 1000;
-                    videoPlayer.play();
-                }
+                
+                // Berechne die Latenz (Zeit seit dem der Controller Play gesendet hat)
+                const latencySeconds = (Date.now() - data.startTime) / 1000;
+                
+                // Setze das Video auf die aktuelle Zeit + Latenz, um den Versatz auszugleichen
+                videoPlayer.currentTime = Math.max(0, latencySeconds);
+                videoPlayer.play();
             }
         }
 
