@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Viewer - Smooth & AR Fixed</title>
+    <title>Torva Viewer - Go B&W / QR Blue / AR Ready</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
@@ -25,14 +25,16 @@
             z-index: 1; perspective: 1000px;
         }
 
-        /* Scanlines */
+        /* Scanline Overlay */
         body::after {
             content: "";
             position: absolute; top: 0; left: 0; width: 100vw; height: 100vh;
             background: repeating-linear-gradient(0deg, rgba(0,0,0,0.15), rgba(0,0,0,0.15) 1px, transparent 1px, transparent 2px);
             pointer-events: none; z-index: 900;
-            opacity: 1; transition: opacity 0.5s ease;
+            opacity: 1;
+            transition: opacity 0.5s ease;
         }
+
         body.video-active::after { opacity: 0; }
 
         .morph-grid {
@@ -47,87 +49,67 @@
 
         .cell { 
             width: 100%; height: 100%; 
-            /* Optimierte Transition für alle Eigenschaften */
-            transition: background-color 0.8s, transform 0.8s cubic-bezier(0.4, 0.0, 0.2, 1), border-radius 0.6s, opacity 0.6s, box-shadow 0.6s;
-            position: relative; 
-            will-change: transform, background-color, border-radius;
+            transition: all 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+            position: relative; border-radius: 2px; 
+            opacity: 0.1; 
+            background: #111; 
+            will-change: transform, opacity, background-color;
         }
 
-        /* =========================================
-           MODE: GO (Aktiviert durch Parent Class)
-           ========================================= */
-        .mode-go .cell { 
-            border-radius: 50%; 
-            opacity: 1; 
-            transform: scale(0.85); 
-        }
+        /* --- MODE: GO (Klassisch Schwarz/Weiß mit 3D Effekt) --- */
+        .mode-go .cell { border-radius: 50%; opacity: 1; transform: scale(0.85); }
         
-        /* Go: Schwarzer Stein */
-        .mode-go .cell.go-black { 
+        /* Schwarzer Stein - Mattes Finish */
+        .mode-go .cell.black { 
             background: radial-gradient(circle at 35% 35%, #444, #000);
             box-shadow: 2px 2px 5px rgba(0,0,0,0.8);
             z-index: 2;
         }
         
-        /* Go: Weißer Stein */
-        .mode-go .cell.go-white { 
+        /* Weißer Stein - Helles Finish */
+        .mode-go .cell.white { 
             background: radial-gradient(circle at 35% 35%, #fff, #bbb);
             box-shadow: 2px 2px 5px rgba(0,0,0,0.5); 
             z-index: 2;
         }
         
-        /* Go: Leer */
-        .mode-go .cell.go-empty { 
-            opacity: 0.1; 
-            transform: scale(0.2); 
-            background: #333; 
-            box-shadow: none;
-        }
+        .mode-go .cell.empty { opacity: 0.05; transform: scale(0.1); background: #333; }
 
-        /* =========================================
-           MODE: QR (Aktiviert durch Parent Class)
-           ========================================= */
-        .mode-qr .cell { 
-            transform: scale(1); 
-            border-radius: 1px; 
-            opacity: 1; 
-            /* Reset Shadows from Go Mode */
-            box-shadow: none; 
-        }
+        /* --- MODE: QR CODE (Nur Blau/Schwarz) --- */
+        .mode-qr .cell { transform: scale(1); border-radius: 1px; opacity: 1; }
         
-        /* QR: Finder Patterns */
-        .mode-qr .cell.qr-finder-outer { background: var(--neon-blue); box-shadow: 0 0 15px rgba(0, 242, 255, 0.5); z-index: 2; }
-        .mode-qr .cell.qr-finder-inner { background: var(--qr-dark); } 
-        .mode-qr .cell.qr-finder-center { background: var(--neon-blue); box-shadow: 0 0 20px rgba(0, 242, 255, 0.8); z-index: 2; }
+        .mode-qr .cell.finder-outer { background: var(--neon-blue); box-shadow: 0 0 15px rgba(0, 242, 255, 0.5); z-index: 2; }
+        .mode-qr .cell.finder-inner { background: var(--qr-dark); } 
+        .mode-qr .cell.finder-center { background: var(--neon-blue); box-shadow: 0 0 20px rgba(0, 242, 255, 0.8); z-index: 2; }
         
-        /* QR: Bits */
-        .mode-qr .cell.qr-bit-1 { background: var(--neon-blue); box-shadow: 0 0 4px rgba(0, 242, 255, 0.2); }
-        .mode-qr .cell.qr-bit-0 { background: var(--qr-dark); transform: scale(0.95); }
+        .mode-qr .cell.bit-1 { background: var(--neon-blue); box-shadow: 0 0 4px rgba(0, 242, 255, 0.2); }
+        .mode-qr .cell.bit-0 { background: var(--qr-dark); transform: scale(0.95); }
 
-        /* --- HIGHLIGHT MODES (Overlays für QR) --- */
-        /* Alles ausblenden was nicht Ziel ist */
-        .highlight-finders .cell:not(.qr-finder-outer):not(.qr-finder-inner):not(.qr-finder-center),
-        .highlight-sync .cell:not(.qr-is-sync),
-        .highlight-version .cell:not(.qr-is-version) { 
+        /* --- HIGHLIGHT MODES --- */
+        .highlight-finders .cell:not(.finder-outer):not(.finder-inner):not(.finder-center),
+        .highlight-sync .cell:not(.is-sync),
+        .highlight-version .cell:not(.is-version) { 
             opacity: 0.1; transform: scale(0.8) blur(2px); filter: grayscale(100%);
         }
 
-        /* Animationen */
-        .highlight-finders .cell.qr-finder-outer { animation: pulse-blue 1.5s infinite; }
-        .highlight-sync .cell.qr-is-sync.qr-bit-1 { background: var(--matrix-green) !important; box-shadow: 0 0 20px var(--matrix-green) !important; z-index: 10; animation: pulse-green 1s infinite; }
-        .highlight-version .cell.qr-is-version.qr-bit-1 { background: var(--neon-purple) !important; box-shadow: 0 0 20px var(--neon-purple) !important; z-index: 10; animation: pulse-purple 1s infinite; }
+        .highlight-finders .cell.finder-outer { animation: pulse-blue 1.5s infinite; }
+        .highlight-sync .cell.is-sync.bit-1 { background: var(--matrix-green) !important; box-shadow: 0 0 20px var(--matrix-green) !important; z-index: 10; animation: pulse-green 1s infinite; }
+        .highlight-version .cell.is-version.bit-1 { background: var(--neon-purple) !important; box-shadow: 0 0 20px var(--neon-purple) !important; z-index: 10; animation: pulse-purple 1s infinite; }
 
         @keyframes pulse-blue { 0%, 100% { box-shadow: 0 0 10px var(--neon-blue); } 50% { box-shadow: 0 0 25px var(--neon-blue); transform: scale(1.05); } }
         @keyframes pulse-green { 0%, 100% { transform: scale(1); opacity: 0.8; } 50% { transform: scale(1.3); opacity: 1; box-shadow: 0 0 30px var(--matrix-green); } }
         @keyframes pulse-purple { 0%, 100% { transform: scale(0.9); } 50% { transform: scale(1.1); box-shadow: 0 0 30px var(--neon-purple); } }
 
-        /* Damage Effect */
+        /* --- DAMAGE UPDATE --- */
         .cell.damaged { 
             background: var(--damage-red) !important; 
             box-shadow: 0 0 15px var(--damage-red) !important; 
-            opacity: 1 !important; z-index: 20; transform: scale(0.9) !important; 
+            opacity: 1 !important; 
+            z-index: 20; 
+            transform: scale(0.9) !important; 
+            border-radius: 2px;
         }
-
+        
         /* --- AR VIEW UPDATE --- */
         #ar-viewer-container { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
@@ -139,24 +121,19 @@
 
         model-viewer { width: 100%; height: 100%; --poster-color: transparent; }
 
-        /* AR Button - Fixed Visibility */
+        /* Custom AR Button Style */
         #ar-button {
-            position: absolute; bottom: 50px; left: 50%; transform: translateX(-50%);
+            position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%);
             border: 1px solid var(--neon-blue); color: var(--neon-blue); 
             background: rgba(0,10,20,0.9); padding: 15px 30px; font-size: 1rem; 
             cursor: pointer; font-family: 'Courier New', monospace; 
             text-transform: uppercase; letter-spacing: 2px; border-radius: 4px;
             box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
-            /* WICHTIG: Display Block, damit er da ist, wenn AR verfügbar */
-            display: block; 
-            white-space: nowrap;
+            display: none; /* Model-Viewer zeigt es automatisch an, wenn AR verfügbar ist */
         }
         #ar-button:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 40px var(--neon-blue); }
 
-        /* Wenn AR nicht supported ist, versteckt Model-Viewer den Button automatisch.
-           Wir können aber fallback erzwingen wenn nötig, aber standard ist sicherer. */
-
-        /* Video / UI */
+        /* UI Elements */
         #video-container { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; 
             background: black; opacity: 0; pointer-events: none; 
@@ -201,7 +178,7 @@
             shadow-intensity="1">
             
             <button slot="ar-button" id="ar-button">
-                ENTER AR REALITY
+                INITIATE AR SESSION
             </button>
         </model-viewer>
     </div>
@@ -224,58 +201,37 @@
         const gridSize = 21; 
         const debugEl = document.getElementById('sync-debug');
 
-        let timeOffset = 0;
-        let videoPlayer = document.getElementById('main-video');
-        let videoContainer = document.getElementById('video-container');
-        let globalVideoState = { startTime: 0, isPlaying: false, syncLoopActive: false };
-
-        // --- PRE-CALCULATION & SETUP ---
-        // Wir bauen das Grid nur EINMAL und weisen alle Klassen sofort zu.
-        // Das verhindert Ruckeln beim Umschalten.
-        
+        // Init Grid
         for(let i=0; i<gridSize*gridSize; i++) {
             let div = document.createElement('div');
             div.className = 'cell';
-            
-            // 1. Assign GO Identity (Random)
-            let r = Math.random();
-            if(r > 0.8) div.classList.add('go-black'); 
-            else if(r > 0.6) div.classList.add('go-white'); 
-            else div.classList.add('go-empty');
-
-            // 2. Assign QR Identity (Deterministic)
-            const x = i % gridSize; 
-            const y = Math.floor(i / gridSize);
-            const qrType = identifyCellType(x, y); // Berechne Typ
-            
-            // Mapping für CSS Selektoren
-            if(qrType === 'finder-outer') div.classList.add('qr-finder-outer');
-            if(qrType === 'finder-inner') div.classList.add('qr-finder-inner');
-            if(qrType === 'finder-center') div.classList.add('qr-finder-center');
-            if(qrType === 'is-sync') div.classList.add('qr-is-sync');
-            if(qrType === 'is-version') div.classList.add('qr-is-version');
-            
-            // Bits setzen
-            if (qrType === 'is-data' || qrType === 'is-version') {
-                div.classList.add(Math.random() > 0.5 ? 'qr-bit-1' : 'qr-bit-0');
-            } else if (qrType === 'is-sync') {
-                let isEven = (x === 6 ? y : x) % 2 === 0;
-                div.classList.add(isEven ? 'qr-bit-1' : 'qr-bit-0');
-            } else {
-                // Finder patterns sind immer "an"
-                div.classList.add('qr-bit-1');
-            }
-
             grid.appendChild(div);
             cells.push(div);
         }
-
-        // --- LOGIC FUNCTIONS ---
 
         function randomizeDelays(intensity = 100) {
             cells.forEach(c => {
                 const delay = Math.floor(Math.random() * intensity);
                 c.style.transitionDelay = `${delay}ms`;
+            });
+        }
+
+        function clearClasses() {
+            grid.classList.remove('mode-go', 'mode-qr', 'highlight-finders', 'highlight-sync', 'highlight-version');
+            cells.forEach(c => c.className = 'cell');
+        }
+
+        function renderGo() {
+            randomizeDelays(400); 
+            requestAnimationFrame(() => {
+                clearClasses();
+                grid.classList.add('mode-go');
+                cells.forEach(c => {
+                    let r = Math.random();
+                    if(r > 0.8) c.classList.add('black'); // 20% Schwarz
+                    else if(r > 0.6) c.classList.add('white'); // 20% Weiß
+                    else c.classList.add('empty'); // 60% Leer
+                });
             });
         }
 
@@ -287,6 +243,7 @@
             if (isTopLeft || isTopRight || isBottomLeft) {
                 let localX = isTopRight ? x - 14 : x;
                 let localY = isBottomLeft ? y - 14 : y;
+
                 if (localX === 0 || localX === 6 || localY === 0 || localY === 6) return 'finder-outer';
                 if (localX === 1 || localX === 5 || localY === 1 || localY === 5) return 'finder-inner';
                 return 'finder-center';
@@ -296,64 +253,33 @@
             return 'is-data';
         }
 
-        // --- RENDER MODES (Pure CSS Switching) ---
-
-        function renderGo() {
-            randomizeDelays(400); 
-            // Wir tauschen nur die Parent-Class. 
-            // Der Browser interpoliert die Eigenschaften (kein JS Loop nötig).
-            grid.classList.remove('mode-qr', 'highlight-finders', 'highlight-sync', 'highlight-version');
-            grid.classList.add('mode-go');
-        }
-
         function renderQRStructure(highlightMode = null) {
             randomizeDelays(150);
+            grid.classList.remove('highlight-finders', 'highlight-sync', 'highlight-version');
             
-            // Erst in den Basis-QR Modus wechseln
-            grid.classList.remove('mode-go', 'highlight-finders', 'highlight-sync', 'highlight-version');
-            grid.classList.add('mode-qr');
+            if(!grid.classList.contains('mode-qr')) {
+                clearClasses();
+                grid.classList.add('mode-qr');
+                
+                cells.forEach((c, i) => {
+                    const x = i % gridSize; 
+                    const y = Math.floor(i / gridSize);
+                    const type = identifyCellType(x, y);
+                    c.classList.add(type);
 
-            // Optional Highlights adden
+                    if (type === 'is-data' || type === 'is-version') {
+                        c.classList.add(Math.random() > 0.5 ? 'bit-1' : 'bit-0');
+                    } else if (type === 'is-sync') {
+                        let isEven = (x === 6 ? y : x) % 2 === 0;
+                        c.classList.add(isEven ? 'bit-1' : 'bit-0');
+                    }
+                });
+            }
+
             if(highlightMode) {
-                // Bei Highlights Delay entfernen für direkteres Feedback
                 cells.forEach(c => c.style.transitionDelay = '0ms');
                 grid.classList.add(highlightMode);
             }
-        }
-
-        // --- SYNC & PUBNUB (Unverändert gut) ---
-        async function syncServerTime(pubnubInstance) {
-            const start = Date.now();
-            return new Promise((resolve) => {
-                pubnubInstance.time((status, response) => {
-                    if (!status.error) {
-                        const end = Date.now();
-                        const latency = (end - start) / 2;
-                        timeOffset = (response.timetoken / 10000) - Date.now() + latency;
-                        debugEl.innerText = `Offset: ${Math.round(timeOffset)}ms`;
-                        resolve();
-                    }
-                });
-            });
-        }
-
-        function syncLoop() {
-            if (!globalVideoState.isPlaying) return;
-            const nowServer = Date.now() + timeOffset;
-            const expectedTime = (nowServer - globalVideoState.startTime) / 1000;
-            const drift = expectedTime - videoPlayer.currentTime;
-
-            if (Math.abs(drift) < 0.04) {
-                if (videoPlayer.playbackRate !== 1.0) videoPlayer.playbackRate = 1.0;
-            } else if (Math.abs(drift) <= 1.0) {
-                let newRate = 1.0 + (drift * 0.15);
-                newRate = Math.min(Math.max(newRate, 0.95), 1.05);
-                videoPlayer.playbackRate = newRate;
-            } else {
-                videoPlayer.currentTime = expectedTime;
-                videoPlayer.playbackRate = 1.0;
-            }
-            requestAnimationFrame(syncLoop);
         }
 
         function initSystem() {
@@ -361,21 +287,24 @@
             btn.style.opacity = '0';
             setTimeout(() => btn.style.display = 'none', 500);
 
+            const videoPlayer = document.getElementById('main-video');
             videoPlayer.muted = false;
             videoPlayer.play().then(() => {
                 videoPlayer.pause();
                 videoPlayer.currentTime = 0;
-            }).catch(() => { videoPlayer.muted = true; });
+                debugEl.innerText = "System Online :: Audio Active";
+            }).catch(e => {
+                videoPlayer.muted = true; 
+                debugEl.innerText = "System Online :: Audio Muted";
+            });
 
-            const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v15-" + Math.floor(Math.random()*10000) });
-            syncServerTime(pubnub);
-
+            const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v15-viewer-" + Math.floor(Math.random()*1000) });
+            
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
                     if(msg.slide !== undefined) deck.slide(msg.slide);
                     
-                    // State Handling via CSS Classes
                     if(msg.action === 'morph_go') renderGo();
                     if(msg.action === 'morph_qr') renderQRStructure(); 
                     if(msg.action === 'highlight_finders') renderQRStructure('highlight-finders');
@@ -383,49 +312,42 @@
                     if(msg.action === 'highlight_version') renderQRStructure('highlight-version');
                     
                     if(msg.action === 'damage') {
-                        let dataCells = cells.filter(c => c.classList.contains('qr-bit-1'));
-                        for(let i=0; i<20; i++) if(dataCells.length) dataCells[Math.floor(Math.random()*dataCells.length)].classList.add('damaged');
+                        let dataCells = cells.filter(c => c.classList.contains('is-data') && c.classList.contains('bit-1'));
+                        for(let i=0; i<25; i++) if(dataCells.length > 0) dataCells[Math.floor(Math.random()*dataCells.length)].classList.add('damaged');
                     }
                     if(msg.action === 'heal') {
-                        cells.forEach(c => c.classList.remove('damaged'));
+                        cells.forEach(c => {
+                            c.classList.remove('damaged');
+                            c.style.transitionDelay = Math.random() * 200 + 'ms';
+                        });
+                        setTimeout(() => renderQRStructure(), 50);
                     }
                     
-                    // Video Sync logic
                     if(msg.action === 'video_sync') {
+                        const container = document.getElementById('video-container');
                         if(msg.videoState === 'play') {
-                            globalVideoState.startTime = msg.startTime;
-                            globalVideoState.isPlaying = true;
-                            videoContainer.classList.add('active');
+                            container.classList.add('active');
                             document.body.classList.add('video-active');
-                            if (videoPlayer.paused) videoPlayer.play();
-                            if (!globalVideoState.syncLoopActive) {
-                                globalVideoState.syncLoopActive = true;
-                                requestAnimationFrame(syncLoop);
-                            }
+                            
+                            let targetTime = ((Date.now() - msg.startTime) / 1000) + 0.1; 
+                            if (targetTime < 0) targetTime = 0;
+                            let drift = Math.abs(videoPlayer.currentTime - targetTime);
+                            if (drift > 0.6 || videoPlayer.paused) videoPlayer.currentTime = targetTime;
+                            if(videoPlayer.paused) videoPlayer.play().catch(e => { videoPlayer.muted = true; videoPlayer.play(); });
                         } else {
-                            globalVideoState.isPlaying = false;
-                            videoContainer.classList.remove('active');
+                            container.classList.remove('active');
                             document.body.classList.remove('video-active');
                             videoPlayer.pause();
                         }
                     }
                 }
             });
+            
             pubnub.subscribe({ channels: ['PrasiW.Woche'] });
             
-            // Start State
+            // Initial Render
             renderGo();
         }
-        
-        // Listener for Reveal.js state changes (Fallback)
-        deck.on('slidechanged', event => {
-            if(event.currentSlide.dataset.state === 'state-ar') {
-                document.getElementById('ar-viewer-container').classList.add('state-ar');
-            } else {
-                document.getElementById('ar-viewer-container').classList.remove('state-ar');
-            }
-        });
-
     </script>
 </body>
 </html>
