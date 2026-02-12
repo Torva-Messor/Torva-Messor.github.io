@@ -19,10 +19,12 @@
         }
         body { background: var(--bg-deep); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
         
+        /* Der Hintergrund mit dem Grid */
         #background-layer { 
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
             display: flex; justify-content: center; align-items: center; 
             z-index: 1; perspective: 1200px; 
+            transition: opacity 0.8s ease; /* Sanftes Ausblenden */
         }
 
         .morph-grid {
@@ -91,16 +93,17 @@
         #video-container.active { opacity: 1; pointer-events: all; }
         video { width: 100%; height: 100%; object-fit: cover; }
         
-        /* --- AR Anpassungen --- */
+        /* --- AR Anpassungen: Fullscreen & Clean --- */
         #ar-viewer-container { 
-            width: 95vw;    /* Breiter */
-            height: 90vh;   /* Höher, damit man mehr sieht */
-            background: rgba(34, 34, 34, 0.4); /* Transparenz, damit man QR evtl. noch erahnt */
-            border-radius: 20px; 
-            overflow: hidden; 
-            position: relative; 
-            margin: 0 auto;
-            border: 1px solid var(--neon-blue);
+            width: 100vw;   /* Komplette Breite */
+            height: 100vh;  /* Komplette Höhe */
+            background: #000; /* Solides Schwarz, verdeckt alles dahinter */
+            margin: 0;
+            padding: 0;
+            position: absolute;
+            top: 0;
+            left: 0;
+            /* Kein Border mehr, da Fullscreen */
         }
         model-viewer { width: 100%; height: 100%; }
 
@@ -110,14 +113,14 @@
             border-radius: 4px;
             border: none;
             position: absolute;
-            bottom: 20px;
-            right: 20px;
-            padding: 12px 24px;
+            bottom: 30px;
+            right: 30px;
+            padding: 15px 30px;
             font-family: 'Courier New', monospace;
             font-weight: bold;
-            font-size: 16px;
+            font-size: 18px;
             color: #000;
-            box-shadow: 0 0 15px rgba(0, 242, 255, 0.5);
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.7);
             cursor: pointer;
             z-index: 1000;
         }
@@ -151,7 +154,8 @@
     <div class="reveal"><div class="slides">
         <section data-state="state-go"></section>
         <section data-state="state-qr"></section>
-        <section data-state="state-ar">
+        
+        <section data-state="state-ar" style="padding: 0; margin: 0;">
             <div id="ar-viewer-container">
                 <model-viewer 
                     src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
@@ -173,14 +177,38 @@
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
     <script>
         const deck = new Reveal();
-        deck.initialize({ controls: false, progress: false, hash: false, transition: 'fade' });
+        deck.initialize({ 
+            controls: false, 
+            progress: false, 
+            hash: false, 
+            transition: 'fade',
+            width: "100%",    // Wichtig für Fullscreen AR
+            height: "100%",   // Wichtig für Fullscreen AR
+            margin: 0,        // Keine Ränder
+            minScale: 1,
+            maxScale: 1 
+        });
         
         const grid = document.getElementById('grid');
+        const bgLayer = document.getElementById('background-layer');
         const cells = [];
         const gridSize = 21; 
         const debugEl = document.getElementById('sync-debug');
         const video = document.getElementById('main-video');
         const container = document.getElementById('video-container');
+
+        // --- HIER IST DIE LOGIK FÜR "AR EIGENE FOLIE OHNE HINTERGRUND" ---
+        deck.on('slidechanged', event => {
+            const currentState = event.currentSlide.getAttribute('data-state');
+            
+            if (currentState === 'state-ar') {
+                // Wenn AR: Hintergrund Grid ausblenden
+                bgLayer.style.opacity = '0';
+            } else {
+                // Sonst: Hintergrund zeigen
+                bgLayer.style.opacity = '1';
+            }
+        });
 
         // --- Globale Status-Variablen für Sync ---
         let globalVideoState = {
@@ -259,36 +287,26 @@
             if(highlightMode) grid.classList.add(highlightMode);
         }
 
-        // --- Der "Apple-Safe" Sync Loop (Integriert) ---
+        // --- Sync Loop ---
         function syncLoop() {
             if (!globalVideoState.isPlaying) return;
 
-            // 1. Wo sollten wir sein?
             const nowServer = Date.now() + timeOffset;
             const expectedTime = (nowServer - globalVideoState.startTime) / 1000;
-
-            // 2. Berechnung des Drifts
             const drift = expectedTime - video.currentTime;
             
-            // Debug Anzeige update
             debugEl.innerText = `Drift: ${drift.toFixed(3)}s | Rate: ${video.playbackRate.toFixed(2)}`;
 
-            // 3. Entscheidung (Smoothed PID Control)
-            
-            // ZONE A: Perfektion (Drift < 40ms)
             if (Math.abs(drift) < 0.04) {
                 if (video.playbackRate !== 1.0) video.playbackRate = 1.0;
             }
-            // ZONE B: Micro-Adjustments
             else if (Math.abs(drift) <= 1.0) {
                 let newRate = 1.0 + (drift * 0.15); 
                 newRate = Math.min(Math.max(newRate, 0.95), 1.05);
-                
                 if (Math.abs(video.playbackRate - newRate) > 0.01) {
                     video.playbackRate = newRate;
                 }
             }
-            // ZONE C: Panic Mode (Drift > 1 Sekunde)
             else {
                 console.log("Hard Sync trigger due to drift:", drift);
                 video.currentTime = expectedTime;
@@ -301,7 +319,6 @@
         function initSystem() {
             document.getElementById('btn-start').style.display = 'none';
             
-            // Unlock Audio Context
             video.muted = false;
             video.play().then(() => {
                 video.pause();
@@ -315,7 +332,6 @@
 
             const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v15-viewer-" + Math.floor(Math.random()*1000) });
             
-            // --- Time Offset Kalibrierung ---
             async function syncServerTime() {
                 const start = Date.now();
                 return new Promise((resolve) => {
@@ -331,7 +347,6 @@
                     });
                 });
             }
-            // Sofort kalibrieren
             syncServerTime();
 
             pubnub.addListener({
@@ -354,7 +369,6 @@
                         renderQRStructure();
                     }
                     
-                    // --- NEUE SYNC FUNKTION (INTEGRIERT) ---
                     if (msg.action === 'video_sync') {
                         if (msg.videoState === 'play') {
                             globalVideoState.startTime = msg.startTime;
@@ -368,25 +382,19 @@
                                     video.muted = true;
                                     video.play();
                                 });
-                                
-                                // Initial-Jump
                                 const nowServer = Date.now() + timeOffset;
                                 const targetPos = (nowServer - globalVideoState.startTime) / 1000;
                                 if (targetPos > 0 && Math.abs(video.currentTime - targetPos) > 1) {
                                     video.currentTime = targetPos;
                                 }
                             }
-
                             if (!globalVideoState.syncLoopActive) {
                                 globalVideoState.syncLoopActive = true;
                                 requestAnimationFrame(syncLoop);
                             }
-
                         } else {
-                            // Stop Logic
                             globalVideoState.isPlaying = false;
                             globalVideoState.syncLoopActive = false;
-                            
                             container.classList.remove('active');
                             document.body.classList.remove('video-active');
                             video.pause();
