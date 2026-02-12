@@ -33,13 +33,14 @@
 
     <div class="button-grid">
         <button class="btn-action" onclick="sendCommand(0, 'morph_go')">⬅️ 1. GO Brett</button>
-        
         <button class="btn-action" onclick="sendCommand(1, 'morph_qr')">✨ 2. Activate QR</button>
         
         <button class="btn-damage" onclick="sendCommand(null, 'damage')">⚡ Damage</button>
         <button class="btn-heal" onclick="sendCommand(null, 'heal')">❤️ Heal</button>
         
-        <button class="btn-video full-width" onclick="sendVideoCommand()">🎥 3. START VIDEO (SYNC)</button>
+        <button class="btn-video full-width" onclick="sendVideoCommand('play')">🎥 3. SYNC START VIDEO</button>
+        <button class="btn-video full-width" onclick="sendVideoCommand('stop')">⏹️ STOP VIDEO</button>
+        
         <button class="btn-video full-width" onclick="sendCommand(3, null)">🤖 4. AR Object</button>
     </div>
 
@@ -59,8 +60,16 @@
             publish(payload);
         }
 
-        function sendVideoCommand() {
-            const payload = { slide: 2, action: 'play_video', timestamp: Date.now() };
+        function sendVideoCommand(state) {
+            // Wir setzen den Startzeitpunkt auf JETZT + 2000ms (2 Sekunden Puffer)
+            // Das gibt allen Geräten Zeit, das Signal zu empfangen, bevor es losgeht.
+            const futureTime = Date.now() + 2000;
+            
+            const payload = { 
+                action: 'video_sync', 
+                videoState: state, // 'play' oder 'stop'
+                startTime: futureTime 
+            };
             publish(payload);
         }
 
