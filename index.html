@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Viewer - AR Fix & Clean QR</title>
+    <title>Torva Viewer - QR All Blue</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
@@ -16,6 +16,7 @@
             --damage-red: #ff0055; 
             --bg-deep: #050505; 
             --qr-dark: #111;
+            /* --qr-light entfernt, da wir jetzt alles blau machen */
         }
         body { background: var(--bg-deep); overflow: hidden; font-family: 'Courier New', monospace; margin: 0; }
         
@@ -23,9 +24,9 @@
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
             display: flex; justify-content: center; align-items: center; 
             z-index: 1; perspective: 1200px; 
-            transition: opacity 0.5s ease; /* Weiches Ausblenden für AR */
         }
 
+        /* Grid auf 21x21 angepasst (Standard QR Code Version 1) */
         .morph-grid {
             display: grid;
             grid-template-columns: repeat(21, 1fr);
@@ -50,56 +51,43 @@
         .mode-go .cell.white { background: #eee; box-shadow: 0 0 10px rgba(255,255,255,0.5); }
         .mode-go .cell.empty { opacity: 0.05; background: #fff; }
 
-        /* --- MODE: QR CODE (Standard: Alles Blau & Einheitlich) --- */
+        /* --- MODE: QR CODE (Sharp Edges) --- */
         .mode-qr .cell { transform: scale(1); border-radius: 0; opacity: 1; }
         
-        /* Basis für alle "aktiven" Pixel im QR Code: BLAU */
-        .mode-qr .cell.finder-outer,
-        .mode-qr .cell.finder-center,
-        .mode-qr .cell.bit-1 {
-            background: var(--neon-blue);
-            box-shadow: 0 0 6px rgba(0, 242, 255, 0.6); /* Einheitlicher Glow */
-            opacity: 1;
-            z-index: 5;
-        }
-
-        /* Basis für inaktive Pixel: DUNKEL */
-        .mode-qr .cell.finder-inner,
-        .mode-qr .cell.bit-0 {
-            background: var(--qr-dark);
-            box-shadow: none;
-            z-index: 1;
-        }
-
-        /* --- HIGHLIGHT MODES (Überschreiben erst hier das Blau) --- */
+        /* Finder Patterns (Ecken) - Bleiben Blau */
+        .mode-qr .cell.finder-outer { background: var(--neon-blue); box-shadow: 0 0 8px rgba(0, 242, 255, 0.6); }
+        .mode-qr .cell.finder-inner { background: var(--qr-dark); } 
+        .mode-qr .cell.finder-center { background: var(--neon-blue); box-shadow: 0 0 12px rgba(0, 242, 255, 0.9); }
         
-        /* 1. Finders Highlight */
-        .highlight-finders .cell { opacity: 0.1; } /* Alles dimmen */
-        .highlight-finders .cell.finder-outer, 
-        .highlight-finders .cell.finder-center { 
-            opacity: 1; transform: scale(1.1); z-index: 10; 
-            box-shadow: 0 0 15px var(--neon-blue); /* Stärkerer Glow */
-        }
+        /* --- HIER SIND DIE ÄNDERUNGEN FÜR "ALLES BLAU" --- 
+           Wir nutzen jetzt var(--neon-blue) für Sync, Version und Data
+        */
 
-        /* 2. Sync Highlight (GRÜN) */
-        .highlight-sync .cell { opacity: 0.1; }
-        .highlight-sync .cell.is-sync.bit-1 { 
-            background: var(--matrix-green) !important; 
-            box-shadow: 0 0 15px var(--matrix-green) !important; 
-            opacity: 1; transform: scale(1.2); border-radius: 50%; z-index: 10; 
-        }
-        /* Damit die Lücken im Sync-Pattern auch sichtbar bleiben, aber dunkel */
-        .highlight-sync .cell.is-sync.bit-0 { opacity: 0.3; }
+        /* Timing Patterns (Linien) */
+        .mode-qr .cell.is-sync.bit-1 { background: var(--neon-blue); box-shadow: 0 0 4px rgba(0, 242, 255, 0.4); }
+        .mode-qr .cell.is-sync.bit-0 { background: var(--qr-dark); }
+        
+        /* Version Information */
+        .mode-qr .cell.is-version.bit-1 { background: var(--neon-blue); box-shadow: 0 0 4px rgba(0, 242, 255, 0.4); }
+        .mode-qr .cell.is-version.bit-0 { background: var(--qr-dark); }
+        
+        /* Data Payload */
+        .mode-qr .cell.is-data.bit-1 { background: var(--neon-blue); box-shadow: 0 0 5px rgba(0, 242, 255, 0.3); }
+        .mode-qr .cell.is-data.bit-0 { background: var(--qr-dark); }
 
-        /* 3. Version Highlight (LILA) */
-        .highlight-version .cell { opacity: 0.1; }
-        .highlight-version .cell.is-version.bit-1 { 
-            background: var(--neon-purple) !important; 
-            box-shadow: 0 0 15px var(--neon-purple) !important; 
-            opacity: 1; transform: scale(0.9); z-index: 10; 
-        }
+        /* --- HIGHLIGHT MODES (Bleiben farbig für den Kontrast beim Erklären) --- */
+        .highlight-finders .cell:not(.finder-outer):not(.finder-inner):not(.finder-center) { opacity: 0.05; transform: scale(0.5); }
+        .highlight-finders .cell.finder-outer, .highlight-finders .cell.finder-center { transform: scale(1.1); z-index: 10; }
 
-        /* Damage Effect */
+        .highlight-sync .cell:not(.is-sync) { opacity: 0.05; transform: scale(0.5); }
+        /* Sync wird GRÜN wenn spezifisch gehighlighted */
+        .highlight-sync .cell.is-sync { opacity: 1; background: var(--matrix-green) !important; box-shadow: 0 0 15px var(--matrix-green) !important; transform: scale(1.2); z-index: 10; border-radius: 50%; }
+
+        .highlight-version .cell:not(.is-version) { opacity: 0.05; transform: scale(0.5); }
+        /* Version wird LILA wenn spezifisch gehighlighted */
+        .highlight-version .cell.is-version.bit-1 { opacity: 1; background: var(--neon-purple) !important; box-shadow: 0 0 15px var(--neon-purple) !important; transform: scale(0.9); z-index: 10; }
+
+        /* Damage/Heal */
         .cell.damaged { background: var(--damage-red) !important; box-shadow: 0 0 15px var(--damage-red) !important; opacity: 1 !important; z-index: 20; animation: glitch 0.2s infinite; }
         
         @keyframes glitch {
@@ -120,7 +108,7 @@
         #video-container.active { opacity: 1; pointer-events: all; }
         video { width: 100%; height: 100%; object-fit: cover; }
         
-        #ar-viewer-container { width: 100%; height: 90vh; background: #222; border-radius: 20px; overflow: hidden; position: relative; margin-top: 5vh; }
+        #ar-viewer-container { width: 100%; height: 80vh; background: #222; border-radius: 20px; overflow: hidden; position: relative; }
         model-viewer { width: 100%; height: 100%; }
         
         #btn-start { 
@@ -154,10 +142,7 @@
         <section data-state="state-qr"></section>
         <section data-state="state-ar">
             <div id="ar-viewer-container">
-                <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" 
-                              ar ar-modes="webxr scene-viewer quick-look" 
-                              camera-controls auto-rotate shadow-intensity="1">
-                </model-viewer>
+                <model-viewer src="https://modelviewer.dev/shared-assets/models/Astronaut.glb" ar camera-controls auto-rotate shadow-intensity="1"></model-viewer>
             </div>
         </section>
     </div></div>
@@ -169,7 +154,6 @@
         deck.initialize({ controls: false, progress: false, hash: false, transition: 'fade' });
         
         const grid = document.getElementById('grid');
-        const bgLayer = document.getElementById('background-layer'); // Ref für Ausblenden
         const cells = [];
         const gridSize = 21; 
         const debugEl = document.getElementById('sync-debug');
@@ -198,6 +182,7 @@
             });
         }
 
+        // --- QR Code Logic ---
         function identifyCellType(x, y) {
             const isTopLeft = x <= 6 && y <= 6;
             const isTopRight = x >= 14 && y <= 6;
@@ -206,12 +191,15 @@
             if (isTopLeft || isTopRight || isBottomLeft) {
                 let localX = isTopRight ? x - 14 : x;
                 let localY = isBottomLeft ? y - 14 : y;
+
                 if (localX === 0 || localX === 6 || localY === 0 || localY === 6) return 'finder-outer';
                 if (localX === 1 || localX === 5 || localY === 1 || localY === 5) return 'finder-inner';
                 return 'finder-center';
             }
+
             if ((x === 6 && y >= 7 && y <= 13) || (y === 6 && x >= 7 && x <= 13)) return 'is-sync';
             if ((x <= 8 && y === 8) || (x === 8 && y <= 8) || (x >= 13 && y === 8) || (x === 8 && y >= 13)) return 'is-version';
+
             return 'is-data';
         }
 
@@ -228,7 +216,6 @@
                     const type = identifyCellType(x, y);
                     c.classList.add(type);
 
-                    // Hier wird "bit-1" für alles gesetzt, was leuchten soll
                     if (type === 'is-data' || type === 'is-version') {
                         c.classList.add(Math.random() > 0.5 ? 'bit-1' : 'bit-0');
                     } else if (type === 'is-sync') {
@@ -241,16 +228,6 @@
             if(highlightMode) grid.classList.add(highlightMode);
         }
 
-        // --- AR LOGIC: Grid verstecken wenn AR Slide aktiv ist ---
-        deck.on('slidechanged', event => {
-            const currentSlide = event.currentSlide;
-            if (currentSlide.getAttribute('data-state') === 'state-ar') {
-                bgLayer.style.opacity = '0'; // Versteckt QR Code
-            } else {
-                bgLayer.style.opacity = '1'; // Zeigt QR Code wieder
-            }
-        });
-
         function initSystem() {
             document.getElementById('btn-start').style.display = 'none';
             const videoPlayer = document.getElementById('main-video');
@@ -261,6 +238,7 @@
                 videoPlayer.currentTime = 0;
                 debugEl.innerText = "Audio Unlocked";
             }).catch(e => {
+                console.warn("Autoplay strict mode", e);
                 videoPlayer.muted = true; 
                 debugEl.innerText = "Audio Muted Fallback";
             });
@@ -289,13 +267,26 @@
                     
                     if(msg.action === 'video_sync') {
                         const container = document.getElementById('video-container');
+                        
                         if(msg.videoState === 'play') {
                             container.classList.add('active');
                             let targetTime = ((Date.now() - msg.startTime) / 1000) + 0.1; 
                             if (targetTime < 0) targetTime = 0;
+
                             let drift = Math.abs(videoPlayer.currentTime - targetTime);
-                            if (drift > 0.6 || videoPlayer.paused) videoPlayer.currentTime = targetTime;
-                            if(videoPlayer.paused) videoPlayer.play().catch(e => { videoPlayer.muted = true; videoPlayer.play(); });
+                            debugEl.innerText = `Sync Drift: ${drift.toFixed(2)}s`;
+
+                            if (drift > 0.6 || videoPlayer.paused) {
+                                videoPlayer.currentTime = targetTime;
+                                debugEl.innerText += " (HARD SYNC)";
+                            }
+
+                            if(videoPlayer.paused) {
+                                videoPlayer.play().catch(e => {
+                                    videoPlayer.muted = true;
+                                    videoPlayer.play();
+                                });
+                            }
                         } else {
                             container.classList.remove('active');
                             videoPlayer.pause();
