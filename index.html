@@ -2,7 +2,7 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <title>Torva Viewer - QR All Blue</title>
+    <title>Torva Viewer - QR All Blue - iOS Sync Fix</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.4.0/model-viewer.min.js"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.css">
@@ -24,7 +24,7 @@
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
             display: flex; justify-content: center; align-items: center; 
             z-index: 1; perspective: 1200px; 
-            transition: opacity 0.8s ease; /* Sanftes Ausblenden */
+            transition: opacity 0.8s ease; 
         }
 
         .morph-grid {
@@ -75,15 +75,6 @@
 
         .cell.damaged { background: var(--damage-red) !important; box-shadow: 0 0 15px var(--damage-red) !important; opacity: 1 !important; z-index: 20; }
         
-        @keyframes glitch {
-            0% { transform: translate(0) }
-            20% { transform: translate(-2px, 2px) }
-            40% { transform: translate(-2px, -2px) }
-            60% { transform: translate(2px, 2px) }
-            80% { transform: translate(2px, -2px) }
-            100% { transform: translate(0) }
-        }
-
         /* Video Container */
         #video-container { 
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 50; 
@@ -95,34 +86,21 @@
         
         /* --- AR Anpassungen: Fullscreen & Clean --- */
         #ar-viewer-container { 
-            width: 100vw;   /* Komplette Breite */
-            height: 100dvh; /* HIER GEÄNDERT: Dynamische Höhe für Mobile */
-            background: #000; /* Solides Schwarz, verdeckt alles dahinter */
-            margin: 0;
-            padding: 0;
-            position: absolute;
-            top: 0;
-            left: 0;
-            /* Kein Border mehr, da Fullscreen */
+            width: 100vw; height: 100dvh; 
+            background: #000; 
+            margin: 0; padding: 0;
+            position: absolute; top: 0; left: 0;
         }
         model-viewer { width: 100%; height: 100%; }
 
-        /* Custom AR Button Styling */
         .ar-button {
             background-color: var(--neon-blue);
-            border-radius: 4px;
-            border: none;
-            position: absolute;
-            bottom: max(60px, calc(env(safe-area-inset-bottom) + 30px)); /* HIER GEÄNDERT: Safe Area Beachtung */
-            right: 30px;
+            border-radius: 4px; border: none;
+            position: absolute; bottom: 60px; right: 30px;
             padding: 15px 30px;
-            font-family: 'Courier New', monospace;
-            font-weight: bold;
-            font-size: 18px;
-            color: #000;
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.7);
-            cursor: pointer;
-            z-index: 1000;
+            font-family: 'Courier New', monospace; font-weight: bold; font-size: 18px;
+            color: #000; box-shadow: 0 0 20px rgba(0, 242, 255, 0.7);
+            cursor: pointer; z-index: 1000;
         }
         
         #btn-start { 
@@ -175,20 +153,23 @@
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/reveal.js/4.5.0/reveal.min.js"></script>
     <script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.6.3.min.js"></script>
+    
     <script>
+        // --- Setup Reveal.js ---
         const deck = new Reveal();
         deck.initialize({ 
             controls: false, 
             progress: false, 
             hash: false, 
             transition: 'fade',
-            width: "100%",    // Wichtig für Fullscreen AR
-            height: "100%",   // Wichtig für Fullscreen AR
-            margin: 0,        // Keine Ränder
+            width: "100%",    
+            height: "100%",   
+            margin: 0,        
             minScale: 1,
             maxScale: 1 
         });
         
+        // --- Variablen ---
         const grid = document.getElementById('grid');
         const bgLayer = document.getElementById('background-layer');
         const cells = [];
@@ -197,28 +178,25 @@
         const video = document.getElementById('main-video');
         const container = document.getElementById('video-container');
 
-        // --- HIER IST DIE LOGIK FÜR "AR EIGENE FOLIE OHNE HINTERGRUND" ---
+        // Sync State
+        let globalVideoState = {
+            startTime: 0,
+            isPlaying: false
+        };
+        let timeOffset = 0;
+        let lastSyncUpdate = 0; // Für Throttling
+
+        // --- AR Anzeige-Logik ---
         deck.on('slidechanged', event => {
             const currentState = event.currentSlide.getAttribute('data-state');
-            
             if (currentState === 'state-ar') {
-                // Wenn AR: Hintergrund Grid ausblenden
-                bgLayer.style.opacity = '0';
+                bgLayer.style.opacity = '0'; // Hintergrund aus
             } else {
-                // Sonst: Hintergrund zeigen
-                bgLayer.style.opacity = '1';
+                bgLayer.style.opacity = '1'; // Hintergrund an
             }
         });
 
-        // --- Globale Status-Variablen für Sync ---
-        let globalVideoState = {
-            startTime: 0,      // Der absolute Startzeitpunkt (Serverzeit)
-            isPlaying: false,
-            syncLoopActive: false
-        };
-        let timeOffset = 0;
-
-        // Init Grid
+        // --- Grid Initialisierung ---
         for(let i=0; i<gridSize*gridSize; i++) {
             let div = document.createElement('div');
             div.className = 'cell';
@@ -226,6 +204,7 @@
             cells.push(div);
         }
 
+        // --- Grid Helper Funktionen ---
         function clearClasses() {
             grid.classList.remove('mode-go', 'mode-qr', 'highlight-finders', 'highlight-sync', 'highlight-version');
             cells.forEach(c => c.className = 'cell');
@@ -250,31 +229,25 @@
             if (isTopLeft || isTopRight || isBottomLeft) {
                 let localX = isTopRight ? x - 14 : x;
                 let localY = isBottomLeft ? y - 14 : y;
-
                 if (localX === 0 || localX === 6 || localY === 0 || localY === 6) return 'finder-outer';
                 if (localX === 1 || localX === 5 || localY === 1 || localY === 5) return 'finder-inner';
                 return 'finder-center';
             }
-
             if ((x === 6 && y >= 7 && y <= 13) || (y === 6 && x >= 7 && x <= 13)) return 'is-sync';
             if ((x <= 8 && y === 8) || (x === 8 && y <= 8) || (x >= 13 && y === 8) || (x === 8 && y >= 13)) return 'is-version';
-
             return 'is-data';
         }
 
         function renderQRStructure(highlightMode = null) {
             grid.classList.remove('highlight-finders', 'highlight-sync', 'highlight-version');
-            
             if(!grid.classList.contains('mode-qr')) {
                 clearClasses();
                 grid.classList.add('mode-qr');
-                
                 cells.forEach((c, i) => {
                     const x = i % gridSize; 
                     const y = Math.floor(i / gridSize);
                     const type = identifyCellType(x, y);
                     c.classList.add(type);
-
                     if (type === 'is-data' || type === 'is-version') {
                         c.classList.add(Math.random() > 0.5 ? 'bit-1' : 'bit-0');
                     } else if (type === 'is-sync') {
@@ -283,72 +256,116 @@
                     }
                 });
             }
-
             if(highlightMode) grid.classList.add(highlightMode);
         }
 
-        // --- Sync Loop ---
+        // --- OPTIMIERTE SYNC LOGIK ---
         function syncLoop() {
             if (!globalVideoState.isPlaying) return;
 
-            const nowServer = Date.now() + timeOffset;
+            requestAnimationFrame(syncLoop);
+
+            // 1. Throttling: Nur alle 250ms Logik ausführen
+            // Das verhindert das "Stottern" auf iOS
+            const now = Date.now();
+            if (now - lastSyncUpdate < 250) return;
+            lastSyncUpdate = now;
+
+            const nowServer = now + timeOffset;
             const expectedTime = (nowServer - globalVideoState.startTime) / 1000;
             const drift = expectedTime - video.currentTime;
             
-            debugEl.innerText = `Drift: ${drift.toFixed(3)}s | Rate: ${video.playbackRate.toFixed(2)}`;
+            debugEl.innerText = `D: ${(drift*1000).toFixed(0)}ms | Rate: ${video.playbackRate.toFixed(2)}`;
 
-            if (Math.abs(drift) < 0.04) {
-                if (video.playbackRate !== 1.0) video.playbackRate = 1.0;
-            }
-            else if (Math.abs(drift) <= 1.0) {
-                let newRate = 1.0 + (drift * 0.15); 
-                newRate = Math.min(Math.max(newRate, 0.95), 1.05);
-                if (Math.abs(video.playbackRate - newRate) > 0.01) {
-                    video.playbackRate = newRate;
-                }
-            }
-            else {
-                console.log("Hard Sync trigger due to drift:", drift);
+            // 2. Hard Sync (Seek) nur bei groben Fehlern (> 2 Sekunden)
+            if (Math.abs(drift) > 2.0) {
+                console.log("Hard Sync trigger");
                 video.currentTime = expectedTime;
                 video.playbackRate = 1.0;
+                return;
             }
 
-            requestAnimationFrame(syncLoop);
+            // 3. Soft Sync mit Deadband (Toleranzbereich)
+            // Wenn Drift < 80ms ist, nichts tun (Video läuft "gut genug")
+            if (Math.abs(drift) < 0.08) {
+                if (video.playbackRate !== 1.0) video.playbackRate = 1.0;
+            }
+            else {
+                // Sanfte Anpassung
+                // Wir begrenzen die Rate zwischen 0.95x und 1.05x, damit Audio nicht leiert
+                let targetRate = 1.0;
+                
+                if (drift > 0) {
+                    // Wir sind zu langsam -> schneller
+                    targetRate = 1.0 + Math.min(drift, 0.08); // Max 1.08x
+                } else {
+                    // Wir sind zu schnell -> langsamer
+                    targetRate = 1.0 + Math.max(drift, -0.08); // Min 0.92x
+                }
+                
+                // Nur zuweisen, wenn Unterschied signifikant, um Browser-API-Calls zu sparen
+                if (Math.abs(video.playbackRate - targetRate) > 0.01) {
+                    video.playbackRate = targetRate;
+                }
+            }
         }
 
-        function initSystem() {
-            document.getElementById('btn-start').style.display = 'none';
+        // --- ROBUSTE ZEIT KALIBRIERUNG (Median-Methode) ---
+        async function calibrateTime(pubnub) {
+            debugEl.innerText = "Calibrating Time...";
+            let offsets = [];
             
-            video.muted = false;
-            video.play().then(() => {
-                video.pause();
-                video.currentTime = 0;
-                debugEl.innerText = "Audio Unlocked";
-            }).catch(e => {
-                console.warn("Autoplay strict mode", e);
-                video.muted = true; 
-                debugEl.innerText = "Audio Muted Fallback";
-            });
-
-            const pubnub = new PubNub({ subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', userId: "v15-viewer-" + Math.floor(Math.random()*1000) });
-            
-            async function syncServerTime() {
-                const start = Date.now();
-                return new Promise((resolve) => {
+            // Wir nehmen 5 Messwerte und nehmen den Median
+            for(let i=0; i<5; i++) {
+                await new Promise(resolve => {
+                    const start = Date.now();
                     pubnub.time((status, response) => {
                         if (!status.error) {
                             const end = Date.now();
                             const latency = (end - start) / 2;
-                            const serverTimeMs = response.timetoken / 10000;
-                            timeOffset = serverTimeMs - (Date.now()) + latency; 
-                            console.log("Time Offset calibrated:", timeOffset, "ms latency:", latency);
-                            resolve();
+                            // PubNub Token (17 digits) -> ms (13 digits) = /10000
+                            const serverTime = response.timetoken / 10000;
+                            const offset = serverTime - end + latency;
+                            offsets.push(offset);
                         }
+                        resolve();
                     });
                 });
+                // Kurze Pause zwischen Pings
+                await new Promise(r => setTimeout(r, 50));
             }
-            syncServerTime();
+            
+            // Sortieren und Median wählen
+            offsets.sort((a,b) => a-b);
+            timeOffset = offsets[Math.floor(offsets.length/2)];
+            console.log("Calibrated Offset (Median):", timeOffset);
+            debugEl.innerText = "System Ready";
+        }
 
+        // --- Hauptinitialisierung ---
+        function initSystem() {
+            document.getElementById('btn-start').style.display = 'none';
+            
+            // iOS Audio Unlock Hack
+            video.muted = false;
+            video.play().then(() => {
+                video.pause();
+                video.currentTime = 0;
+            }).catch(e => {
+                console.warn("Autoplay restriction", e);
+                video.muted = true; // Fallback
+                video.play().then(() => video.pause());
+            });
+
+            const pubnub = new PubNub({ 
+                subscribeKey: 'sub-c-6fdfc9e3-91b8-4f79-b62a-6fd9fc69eff7', 
+                userId: "v15-viewer-" + Math.floor(Math.random()*10000) 
+            });
+            
+            // Start Calibration
+            calibrateTime(pubnub);
+
+            // PubNub Listener
             pubnub.addListener({
                 message: (m) => {
                     const msg = m.message;
@@ -369,35 +386,34 @@
                         renderQRStructure();
                     }
                     
+                    // Video Sync Empfang
                     if (msg.action === 'video_sync') {
                         if (msg.videoState === 'play') {
                             globalVideoState.startTime = msg.startTime;
                             globalVideoState.isPlaying = true;
                             
                             container.classList.add('active');
-                            document.body.classList.add('video-active');
-
+                            
                             if (video.paused) {
+                                const nowServer = Date.now() + timeOffset;
+                                const targetPos = (nowServer - globalVideoState.startTime) / 1000;
+                                
+                                // Initial Seek wenn nötig
+                                if (targetPos > 0) video.currentTime = targetPos;
+                                
                                 video.play().catch(() => {
                                     video.muted = true;
                                     video.play();
                                 });
-                                const nowServer = Date.now() + timeOffset;
-                                const targetPos = (nowServer - globalVideoState.startTime) / 1000;
-                                if (targetPos > 0 && Math.abs(video.currentTime - targetPos) > 1) {
-                                    video.currentTime = targetPos;
-                                }
                             }
-                            if (!globalVideoState.syncLoopActive) {
-                                globalVideoState.syncLoopActive = true;
-                                requestAnimationFrame(syncLoop);
-                            }
+                            // Starte Sync Loop
+                            requestAnimationFrame(syncLoop);
+                            
                         } else {
                             globalVideoState.isPlaying = false;
-                            globalVideoState.syncLoopActive = false;
                             container.classList.remove('active');
-                            document.body.classList.remove('video-active');
                             video.pause();
+                            video.currentTime = 0;
                             video.playbackRate = 1.0;
                         }
                     }
