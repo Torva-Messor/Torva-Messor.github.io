@@ -1,3 +1,6 @@
+<script src="https://cdn.pubnub.com/sdk/javascript/pubnub.7.2.2.min.js"></script>
+<script src="config.js"></script>
+<script src="app.js"></script>
 
 
 const startBtn = document.getElementById('start-ar');
