@@ -1,0 +1,32 @@
+
+body {
+    margin: 0px; 
+    overflow: hidden;
+    font-family: sans-serif;
+}
+
+#ui-container {
+    position: absolute;
+    bottom: 30px;
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    z-index: 1000; 
+}
+
+button {
+    padding: 15px 30px;
+    font-size: 18px;
+    background-color: #e0245e;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+button:active {
+    background-color: #b01c49;
+    transform: translateY(2px);
+}
