@@ -41,10 +41,23 @@ startBtn.addEventListener('click', () => {
 document.getElementById('color-btn').addEventListener('click', () => {
     const newColor = '#' + Math.floor(Math.random()*16777215).toString(16);
     sharedCube.setAttribute('color', newColor);
-
     pubnub.publish({
         channel: CONFIG.CHANNEL_NAME,
         message: { action: "change_color", color: newColor }
+function syncPosition(newPosition) {
+    pubnub.publish({
+        channel: CONFIG.CHANNEL_NAME,
+        message: {
+            action: "move_object",
+            position: newPosition
+        }
+    });
+}
+
+if (msg.action === "move_object") {
+    sharedCube.setAttribute('position', msg.position);
+}
+
     });
 });
 
